@@ -6,21 +6,22 @@ This document tracks all identified architectural and functional defects, catego
 
 ## Defect Summary
 
-| Bug ID | Severity | Title | File & Line | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **BUG-001** | **P0** | Participant disappears on page reload due to immediate disconnect broadcast | `server/socket/socketHandler.js:936-946` | **OPEN** |
-| **BUG-002** | **P0** | Missing REST endpoint `GET /api/rooms/:roomId/state` for state rehydration on reload/rejoin | `server/routes/roomRoutes.js:160` | **OPEN** |
-| **BUG-003** | **P1** | `MeetingAttendance` unique compound index includes `socketId`, creating duplicate attendance on rejoin | `server/models/MeetingAttendance.js:14`, `server/socket/socketHandler.js:350-367` | **OPEN** |
-| **BUG-004** | **P1** | Non-host authenticated users assigned random `guest-` IDs on room join | `server/routes/roomRoutes.js:139-140` | **OPEN** |
-| **BUG-005** | **P1** | Video tile keying in frontend uses `peer.socketId` instead of stable `userId` | `src/components/meeting/MeetingRoom.jsx:49-58` | **OPEN** |
-| **BUG-007** | **P2** | In-memory presence cache in `memoryMeetingStore` can desynchronize from MongoDB | `server/socket/socketHandler.js:51-101`, `server/store/memoryMeetingStore.js` | **OPEN** |
-| **BUG-008** | **P0** | Meeting archives / DB archives leaks previous users' local IndexedDB records to new accounts | `src/components/history/MeetingHistoryModal.jsx`, `src/services/dbService.js` | **FIXED** |
+| Bug ID      | Severity | Title                                                                                                  | File & Line                                                                       | Status    |
+| :---------- | :------- | :----------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------- | :-------- |
+| **BUG-001** | **P0**   | Participant disappears on page reload due to immediate disconnect broadcast                            | `server/socket/socketHandler.js:936-946`                                          | **OPEN**  |
+| **BUG-002** | **P0**   | Missing REST endpoint `GET /api/rooms/:roomId/state` for state rehydration on reload/rejoin            | `server/routes/roomRoutes.js:160`                                                 | **OPEN**  |
+| **BUG-003** | **P1**   | `MeetingAttendance` unique compound index includes `socketId`, creating duplicate attendance on rejoin | `server/models/MeetingAttendance.js:14`, `server/socket/socketHandler.js:350-367` | **OPEN**  |
+| **BUG-004** | **P1**   | Non-host authenticated users assigned random `guest-` IDs on room join                                 | `server/routes/roomRoutes.js:139-140`                                             | **OPEN**  |
+| **BUG-005** | **P1**   | Video tile keying in frontend uses `peer.socketId` instead of stable `userId`                          | `src/components/meeting/MeetingRoom.jsx:49-58`                                    | **OPEN**  |
+| **BUG-007** | **P2**   | In-memory presence cache in `memoryMeetingStore` can desynchronize from MongoDB                        | `server/socket/socketHandler.js:51-101`, `server/store/memoryMeetingStore.js`     | **OPEN**  |
+| **BUG-008** | **P0**   | Meeting archives / DB archives leaks previous users' local IndexedDB records to new accounts           | `src/components/history/MeetingHistoryModal.jsx`, `src/services/dbService.js`     | **FIXED** |
 
 ---
 
 ## Detailed Bug Reports
 
 ### BUG-001: Participant Disappears on Page Reload Due to Immediate Disconnect Broadcast
+
 - **Severity**: **P0 (Critical Blocker)**
 - **File & Line**: [`server/socket/socketHandler.js:936-946`](file:///c:/WEB/React/Reat2.0/server/socket/socketHandler.js#L936-L946)
 - **Reproduction Steps**:
@@ -40,7 +41,8 @@ This document tracks all identified architectural and functional defects, catego
       if (roomMap.size === 0) {
         rooms.delete(socket.roomId);
       } else {
-        socket.to(socket.roomId).emit('user-left', { // Immediate broadcast!
+        socket.to(socket.roomId).emit('user-left', {
+          // Immediate broadcast!
           socketId: socket.id,
           user: socket.user,
         });
@@ -60,6 +62,7 @@ This document tracks all identified architectural and functional defects, catego
 ---
 
 ### BUG-002: Missing REST Endpoint `GET /api/rooms/:roomId/state` for State Rehydration on Rejoin
+
 - **Severity**: **P0 (Critical Blocker)**
 - **File & Line**: [`server/routes/roomRoutes.js:160`](file:///c:/WEB/React/Reat2.0/server/routes/roomRoutes.js#L160)
 - **Reproduction Steps**:
@@ -78,6 +81,7 @@ This document tracks all identified architectural and functional defects, catego
 ---
 
 ### BUG-003: `MeetingAttendance` Unique Index Includes `socketId`, Duplicating Records on Rejoin
+
 - **Severity**: **P1 (High Severity)**
 - **File & Line**: [`server/models/MeetingAttendance.js:14`](file:///c:/WEB/React/Reat2.0/server/models/MeetingAttendance.js#L14), [`server/socket/socketHandler.js:350-367`](file:///c:/WEB/React/Reat2.0/server/socket/socketHandler.js#L350-L367)
 - **Reproduction Steps**:
@@ -95,6 +99,7 @@ This document tracks all identified architectural and functional defects, catego
 ---
 
 ### BUG-004: Non-Host Authenticated Users Assigned Random `guest-` IDs on Room Join
+
 - **Severity**: **P1 (High Severity)**
 - **File & Line**: [`server/routes/roomRoutes.js:139-140`](file:///c:/WEB/React/Reat2.0/server/routes/roomRoutes.js#L139-L140)
 - **Reproduction Steps**:
@@ -113,12 +118,13 @@ This document tracks all identified architectural and functional defects, catego
   ```javascript
   const participantId = req.user
     ? String(req.user.id || req.user._id)
-    : (req.body?.participantId || `guest-${randomUUID()}`);
+    : req.body?.participantId || `guest-${randomUUID()}`;
   ```
 
 ---
 
 ### BUG-005: Video Tile Keying in Frontend Uses `peer.socketId` Instead of Stable `userId`
+
 - **Severity**: **P1 (High Severity)**
 - **File & Line**: [`src/components/meeting/MeetingRoom.jsx:49-58`](file:///c:/WEB/React/Reat2.0/src/components/meeting/MeetingRoom.jsx#L49-L58)
 - **Reproduction Steps**:
@@ -138,6 +144,7 @@ This document tracks all identified architectural and functional defects, catego
 ---
 
 ### BUG-006: Client Meeting-Scoped `sessionStorage` Not Validated Against Active URL / Room Transitions
+
 - **Severity**: **P2 (Medium Severity)**
 - **File & Line**: [`src/App.jsx:20-55`](file:///c:/WEB/React/Reat2.0/src/App.jsx#L20-L55), [`src/services/apiService.js:46-55`](file:///c:/WEB/React/Reat2.0/src/services/apiService.js#L46-L55)
 - **Reproduction Steps**:
@@ -152,6 +159,7 @@ This document tracks all identified architectural and functional defects, catego
 ---
 
 ### BUG-007: In-Memory Presence Cache in `memoryMeetingStore` Can Desynchronize from MongoDB
+
 - **Severity**: **P2 (Medium Severity)**
 - **File & Line**: [`server/socket/socketHandler.js:51-101`](file:///c:/WEB/React/Reat2.0/server/socket/socketHandler.js#L51-L101), [`server/store/memoryMeetingStore.js`](file:///c:/WEB/React/Reat2.0/server/store/memoryMeetingStore.js)
 - **Reproduction Steps**:
@@ -165,6 +173,7 @@ This document tracks all identified architectural and functional defects, catego
 ---
 
 ### BUG-008: Meeting Archives / DB Archives Leaks Previous Users' Local IndexedDB Records to New Accounts
+
 - **Severity**: **P0 (Critical Security & Privacy Defect)**
 - **File & Line**: [`src/components/history/MeetingHistoryModal.jsx:17-90`](file:///c:/WEB/React/Reat2.0/src/components/history/MeetingHistoryModal.jsx#L17-L90), [`src/services/dbService.js:278-305`](file:///c:/WEB/React/Reat2.0/src/services/dbService.js#L278-L305), [`src/services/cryptoAuthService.js:612-619`](file:///c:/WEB/React/Reat2.0/src/services/cryptoAuthService.js#L612-L619)
 - **Reproduction Steps**:
@@ -184,5 +193,3 @@ This document tracks all identified architectural and functional defects, catego
   4. Added automated regression tests:
      - Integration test in `test/storageAndDbBridge.test.js` asserting zero cross-account history leakage.
      - Playwright E2E browser test in `e2e/archivesIsolation.spec.js` asserting User B never sees User A's meetings in "DB Archives".
-
-
