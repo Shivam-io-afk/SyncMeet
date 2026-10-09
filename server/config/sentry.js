@@ -55,3 +55,4 @@ export function captureException(error, context = {}) {
 export function isSentryActive() {
   return isSentryEnabled;
 }
+

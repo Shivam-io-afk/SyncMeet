@@ -14,7 +14,7 @@ function validateTranscripts(transcripts, allowEmpty = false) {
   ) {
     return 'Provide between 1 and 500 transcript entries';
   }
-
+ 
   let totalCharacters = 0;
   for (const entry of transcripts) {
     if (

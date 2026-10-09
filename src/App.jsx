@@ -16,6 +16,7 @@ import { MeetingHistoryModal } from './components/history/MeetingHistoryModal';
 import { HostControlsModal } from './components/meeting/HostControlsModal';
 import { UserProfileModal } from './components/auth/UserProfileModal';
 import { UserMenu } from './components/auth/UserMenu';
+import { ThemeProvider } from './context/ThemeContext';
 
 const ACTIVE_MEETING_KEY = 'syncmeet_active_meeting_v1';
 
@@ -54,7 +55,7 @@ function getSavedMeetingSession() {
   }
 }
 
-export default function App() {
+function AppContent() {
   // 2. Cryptographic Authentication & User State
   const [currentUser, setCurrentUser] = useState(() => cryptoAuthService.getSessionUser());
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -915,3 +916,12 @@ export default function App() {
     </>
   );
 }
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+

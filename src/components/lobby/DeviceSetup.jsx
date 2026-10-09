@@ -6,6 +6,7 @@ import {
 import { AudioVisualizer } from '../ui/AudioVisualizer';
 import { PermissionModal } from './PermissionModal';
 import { ScheduleMeetingModal } from './ScheduleMeetingModal';
+import { ThemeToggle } from '../common/ThemeToggle';
 import { dbService } from '../../services/dbService';
 import { apiService } from '../../services/apiService';
 
@@ -221,34 +222,35 @@ export function DeviceSetup({
   ];
 
   return (
-    <div className="relative min-h-dvh overflow-x-hidden bg-[#e5e7eb] p-0 text-[#20211e]">
+    <div className="relative min-h-dvh overflow-x-hidden bg-[#e5e7eb] p-0 text-[#20211e] dark:bg-[#07090e] dark:text-[#f3f4f6]">
 
       {mediaState.permissionError && (
         <PermissionModal onRetry={() => mediaState.retryStream()} />
       )}
 
-      <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-[#eef0ed]">
-        <header className="relative z-30 flex min-h-[62px] shrink-0 items-center justify-between gap-3 border-b border-[#e8e9e5] bg-[#fbfbf8] px-3.5 md:px-5">
+      <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-[#eef0ed] dark:bg-[#0c0e14]">
+        <header className="relative z-30 flex min-h-[62px] shrink-0 items-center justify-between gap-3 border-b border-[#e8e9e5] bg-[#fbfbf8] px-3.5 md:px-5 dark:border-[#1e2330] dark:bg-[#12151e]">
           <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#d8edb5] to-[#f2b59c] text-[#34372e]">
               <Video className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-xs font-bold tracking-tight text-[#282a25] sm:text-sm">SyncMeet AI</p>
-              <p className="hidden truncate text-[10px] text-[#85877f] sm:block">Intelligent video collaboration</p>
+              <p className="truncate text-xs font-bold tracking-tight text-[#282a25] sm:text-sm dark:text-[#f3f4f6]">SyncMeet AI</p>
+              <p className="hidden truncate text-[10px] text-[#85877f] sm:block dark:text-[#9ca3af]">Intelligent video collaboration</p>
             </div>
-            <span className="mx-1 hidden h-5 w-px bg-[#e5e6df] sm:block" />
-            <span className="hidden items-center gap-1.5 rounded-full border border-[#e8e9e3] bg-white px-2.5 py-1 text-[10px] font-medium text-[#6f7269] md:inline-flex">
+            <span className="mx-1 hidden h-5 w-px bg-[#e5e6df] sm:block dark:bg-[#222736]" />
+            <span className="hidden items-center gap-1.5 rounded-full border border-[#e8e9e3] bg-white px-2.5 py-1 text-[10px] font-medium text-[#6f7269] md:inline-flex dark:border-[#262c3c] dark:bg-[#181d28] dark:text-[#a0a6b5]">
               <House className="h-3 w-3 text-[#8aa767]" />
               Meeting setup
             </span>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle variant="header" />
             <button
               type="button"
               onClick={onOpenHistory}
-              className="flex items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-2.5 py-1.5 text-[10px] font-medium text-[#686b63] transition-colors hover:bg-[#f4f5f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50 sm:px-3"
+              className="flex items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-2.5 py-1.5 text-[10px] font-medium text-[#686b63] transition-colors hover:bg-[#f4f5f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50 sm:px-3 dark:border-[#262c3c] dark:bg-[#181d28] dark:text-[#a0a6b5] dark:hover:bg-[#202737]"
               title="Open database archives"
             >
               <Database className="h-3.5 w-3.5 text-[#8aa767]" />
@@ -259,7 +261,7 @@ export function DeviceSetup({
               onClick={() => setScheduleModalOpen(true)}
               aria-label="Schedule meeting"
               title="Schedule meeting"
-              className="flex h-9 items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-3 text-[10px] font-semibold text-[#60635b] transition-colors hover:bg-[#f4f5f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50"
+              className="flex h-9 items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-3 text-[10px] font-semibold text-[#60635b] transition-colors hover:bg-[#f4f5f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50 dark:border-[#262c3c] dark:bg-[#181d28] dark:text-[#a0a6b5] dark:hover:bg-[#202737]"
             >
               <CalendarDays className="h-3.5 w-3.5 text-[#8aa767]" />
               <span className="hidden sm:inline">Schedule</span>
@@ -269,7 +271,7 @@ export function DeviceSetup({
         </header>
 
         <div className="relative z-10 flex min-h-0 flex-1 flex-col lg:flex-row">
-          <nav aria-label="Home navigation" className="hidden w-[58px] shrink-0 flex-col items-center gap-3 border-r border-[#e8e9e5] bg-[#fdfdfb] py-4 lg:flex">
+          <nav aria-label="Home navigation" className="hidden w-[58px] shrink-0 flex-col items-center gap-3 border-r border-[#e8e9e5] bg-[#fdfdfb] py-4 lg:flex dark:border-[#1e2330] dark:bg-[#12151e]">
             <div className="mb-1 flex h-9 w-9 items-center justify-center rounded-[13px] bg-gradient-to-br from-[#d8edb5] to-[#f2b59c] text-[#30332a]">
               <Video className="h-4 w-4" />
             </div>
@@ -278,7 +280,7 @@ export function DeviceSetup({
               aria-label="Meeting setup"
               aria-current="page"
               title="Meeting setup"
-              className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#171815] text-white shadow-sm"
+              className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#171815] text-white shadow-sm dark:bg-[#222838]"
             >
               <House className="h-[17px] w-[17px]" />
             </button>
@@ -287,11 +289,11 @@ export function DeviceSetup({
               aria-label="Meeting archives"
               title="Meeting archives"
               onClick={onOpenHistory}
-              className="flex h-10 w-10 items-center justify-center rounded-[14px] text-[#777a72] transition-colors hover:bg-[#eff0eb] hover:text-[#242620]"
+              className="flex h-10 w-10 items-center justify-center rounded-[14px] text-[#777a72] transition-colors hover:bg-[#eff0eb] hover:text-[#242620] dark:text-[#8d93a3] dark:hover:bg-[#1c2230] dark:hover:text-[#f3f4f6]"
             >
               <CalendarDays className="h-[17px] w-[17px]" />
             </button>
-            <div className="mt-auto flex h-9 w-9 items-center justify-center rounded-xl bg-[#f1f2ee] text-[#777a72]">
+            <div className="mt-auto flex h-9 w-9 items-center justify-center rounded-xl bg-[#f1f2ee] text-[#777a72] dark:bg-[#1a202c] dark:text-[#8d93a3]">
               <MessagesSquare className="h-4 w-4" />
             </div>
           </nav>

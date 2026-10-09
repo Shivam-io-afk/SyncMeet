@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Copy, Check, Shield, Users, Sparkles, Radio, Database } from 'lucide-react';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 async function copyToClipboard(text) {
   if (navigator.clipboard?.writeText) {
@@ -110,37 +111,37 @@ export function HeaderBar({
   };
 
   return (
-    <header className="relative z-30 flex h-[58px] shrink-0 items-center justify-between border-b border-[#e8e9e5] bg-[#fbfbf8] px-3 md:px-5 select-none">
+    <header className="relative z-30 flex h-[58px] shrink-0 items-center justify-between border-b border-[#e8e9e5] bg-[#fbfbf8] px-3 md:px-5 select-none dark:border-[#1e2330] dark:bg-[#12151e]">
       {/* Left: Brand & Room Info */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#d8edb5] to-[#f2b59c]">
-            <Radio className="h-4 w-4 text-[#34372e]" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#d8edb5] to-[#f2b59c] text-[#34372e]">
+            <Radio className="h-4 w-4" />
           </div>
-          <span className="hidden text-sm font-bold tracking-tight text-[#282a25] sm:inline-block">
+          <span className="hidden text-sm font-bold tracking-tight text-[#282a25] sm:inline-block dark:text-[#f3f4f6]">
             SyncMeet AI
           </span>
         </div>
 
-        <div className="hidden h-4 w-px bg-[#e2e3de] sm:block" />
+        <div className="hidden h-4 w-px bg-[#e2e3de] sm:block dark:bg-[#222736]" />
 
         {/* Room Code Pill with Copy */}
         <button
           type="button"
           onClick={copyRoomLink}
-          className="flex max-w-[34vw] items-center gap-2 rounded-full border border-[#e7e8e3] bg-white px-3 py-1.5 text-xs font-mono text-[#686b63] transition-all hover:border-[#cbd0c2] hover:bg-[#f4f5f1] active:scale-95"
+          className="flex max-w-[34vw] items-center gap-2 rounded-full border border-[#e7e8e3] bg-white px-3 py-1.5 text-xs font-mono text-[#686b63] transition-all hover:border-[#cbd0c2] hover:bg-[#f4f5f1] active:scale-95 dark:border-[#262c3c] dark:bg-[#181d28] dark:text-[#a0a6b5] dark:hover:border-[#384158] dark:hover:bg-[#202737]"
           title="Click to copy meeting link"
         >
           <span>{roomId}</span>
           {copied ? (
-            <Check className="h-3.5 w-3.5 text-[#7d9c56]" />
+            <Check className="h-3.5 w-3.5 text-[#7d9c56] dark:text-[#9bbc6d]" />
           ) : (
-            <Copy className="h-3.5 w-3.5 text-[#8a8d84]" />
+            <Copy className="h-3.5 w-3.5 text-[#8a8d84] dark:text-[#808696]" />
           )}
         </button>
 
         {/* Meeting Timer */}
-        <div className="flex items-center gap-1.5 rounded-full border border-[#efc8b7] bg-[#fff6f0] px-2.5 py-1 font-mono text-xs text-[#6d584e]">
+        <div className="flex items-center gap-1.5 rounded-full border border-[#efc8b7] bg-[#fff6f0] px-2.5 py-1 font-mono text-xs text-[#6d584e] dark:border-[#483325] dark:bg-[#251b14] dark:text-[#f3a67d]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#ee7569]" />
           <span>{formatTime(elapsedSeconds)}</span>
         </div>
@@ -150,10 +151,10 @@ export function HeaderBar({
       <div className="hidden md:flex items-center gap-2.5">
         <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium transition-colors ${
           isTranscribing
-            ? 'bg-[#edf4e3] border-[#dce8cb] text-[#657b4a]'
-            : 'bg-[#f2f3ef] border-[#e7e8e3] text-[#777a72]'
+            ? 'bg-[#edf4e3] border-[#dce8cb] text-[#657b4a] dark:bg-[#152319] dark:border-[#203926] dark:text-[#88c580]'
+            : 'bg-[#f2f3ef] border-[#e7e8e3] text-[#777a72] dark:bg-[#181d28] dark:border-[#262c3c] dark:text-[#a0a6b5]'
         }`}>
-          <span className={`h-2 w-2 rounded-full ${isTranscribing ? 'bg-[#9bbc6d] animate-pulse' : 'bg-[#b5b7b0]'}`} />
+          <span className={`h-2 w-2 rounded-full ${isTranscribing ? 'bg-[#9bbc6d] animate-pulse' : 'bg-[#b5b7b0] dark:bg-[#585e70]'}`} />
           <span>
             {!isSpeechSupported
               ? 'Captions unavailable'
@@ -168,26 +169,28 @@ export function HeaderBar({
         </div>
 
         {isGeneratingNotes && (
-          <div className="flex animate-pulse items-center gap-1.5 rounded-full border border-[#e8dcc5] bg-[#f8f3e9] px-3 py-1 text-xs font-medium text-[#897044]">
-            <Sparkles className="h-3.5 w-3.5 text-[#ad925a]" />
+          <div className="flex animate-pulse items-center gap-1.5 rounded-full border border-[#e8dcc5] bg-[#f8f3e9] px-3 py-1 text-xs font-medium text-[#897044] dark:border-[#4a3f25] dark:bg-[#251f12] dark:text-[#f2c97d]">
+            <Sparkles className="h-3.5 w-3.5 text-[#ad925a] dark:text-[#f2c97d]" />
             <span>AI Synthesizing Notes...</span>
           </div>
         )}
       </div>
 
-      {/* Right: Participant Count & Quick Actions */}
+      {/* Right: Participant Count, Theme Toggle & Quick Actions */}
       <div className="flex items-center gap-2">
+        <ThemeToggle variant="header" />
+
         <button
           type="button"
           onClick={onOpenHistory}
-          className="flex items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-3 py-1.5 text-xs font-medium text-[#686b63] transition-all hover:bg-[#f4f5f1]"
+          className="flex items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-3 py-1.5 text-xs font-medium text-[#686b63] transition-all hover:bg-[#f4f5f1] dark:border-[#262c3c] dark:bg-[#181d28] dark:text-[#a0a6b5] dark:hover:bg-[#202737]"
           title="Open Database Records"
         >
           <Database className="h-3.5 w-3.5 text-[#8aa767]" />
           <span className="hidden sm:inline">Archives</span>
         </button>
 
-        <div className="flex items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-3 py-1.5 text-xs font-medium text-[#686b63]">
+        <div className="flex items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-3 py-1.5 text-xs font-medium text-[#686b63] dark:border-[#262c3c] dark:bg-[#181d28] dark:text-[#a0a6b5]">
           <Users className="h-3.5 w-3.5 text-[#8aa767]" />
           <span>{participantCount}</span>
         </div>
@@ -197,7 +200,7 @@ export function HeaderBar({
           <button
             type="button"
             onClick={onOpenHostControls}
-            className="flex items-center gap-1.5 rounded-full border border-[#e5d7b7] bg-[#faf5e9] px-3 py-1.5 text-xs font-semibold text-[#826d3f] transition-all hover:bg-[#f4ecd9] active:scale-95"
+            className="flex items-center gap-1.5 rounded-full border border-[#e5d7b7] bg-[#faf5e9] px-3 py-1.5 text-xs font-semibold text-[#826d3f] transition-all hover:bg-[#f4ecd9] active:scale-95 dark:border-[#42361e] dark:bg-[#251e12] dark:text-[#f2c97d] dark:hover:bg-[#2f2717]"
             title="Open Host Moderation & Security Panel"
           >
             <Shield className="h-3.5 w-3.5 text-[#a4894e]" />
@@ -210,7 +213,7 @@ export function HeaderBar({
         <button
           type="button"
           onClick={copyRoomLink}
-          className="hidden items-center gap-1.5 rounded-full bg-[#171815] px-3.5 py-1.5 text-xs font-semibold text-white transition-all hover:bg-[#34362f] active:scale-95 sm:flex"
+          className="hidden items-center gap-1.5 rounded-full bg-[#171815] px-3.5 py-1.5 text-xs font-semibold text-white transition-all hover:bg-[#34362f] active:scale-95 sm:flex dark:bg-[#222838] dark:hover:bg-[#2e374d]"
         >
           <Copy className="w-3.5 h-3.5" />
           <span>{copied ? 'Copied' : 'Share Link'}</span>

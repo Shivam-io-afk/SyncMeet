@@ -92,3 +92,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Updated `package.json` with pinned Phase 3 dependencies (`pino`, `pino-http`, `@sentry/node`, `@sentry/react`, `bullmq`) and updated `check:server` script.
   - Updated `.env.example` with Phase 3 configuration options.
   - Updated `docs/DECISIONS.md` with architectural records for observability, queues, and containerization.
+
+### UI/UX: Dark Mode Toggle & Adaptive Styling
+
+- **Added**:
+  - `src/context/ThemeContext.jsx`: Zero-localStorage React context providing theme state and switching via `sessionStorage` (`syncmeet_theme`) and system preference (`prefers-color-scheme`), safely conforming to zero-localStorage policy.
+  - `src/components/common/ThemeToggle.jsx`: Polished accessible toggle component offering header pill, circular icon, and settings menu switch variants with smooth icon transitions and keyboard navigation.
+  - `tailwind.config.js`: Configured `darkMode: 'class'`.
+- **Changed**:
+  - `src/index.css`: Added adaptive theme transitions, dark color scheme, and dark-adapted glassmorphic scrollbars.
+  - `src/App.jsx`: Wrapped application in `<ThemeProvider>`.
+  - `src/components/meeting/HeaderBar.jsx`: Integrated dark mode toggle pill in the meeting header.
+  - `src/components/lobby/DeviceSetup.jsx`: Added dark mode toggle pill to pre-join lobby header.
+  - `src/components/auth/UserMenu.jsx`: Added dark mode toggle switch into the user profile dropdown.
+  - `src/components/auth/LoginPage.jsx`: Added dark mode toggle to the login/signup screen.
+  - `src/components/meeting/MeetingRoom.jsx`: Styled participant panels and mobile navigation bars for dark mode compatibility.
+

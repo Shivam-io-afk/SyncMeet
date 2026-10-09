@@ -111,8 +111,8 @@ export function MeetingRoom({
   ];
 
   return (
-    <div className="relative h-[100dvh] w-screen overflow-hidden bg-[#e5e7eb] p-0 text-[#20211e]">
-      <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#eef0ed]">
+    <div className="relative h-[100dvh] w-screen overflow-hidden bg-[#e5e7eb] p-0 text-[#20211e] dark:bg-[#07090e] dark:text-[#f3f4f6]">
+      <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#eef0ed] dark:bg-[#0c0e14]">
       {/* Floating Host Admit / Deny Banner for waiting room requests */}
       <HostAdmitBanner
         knockRequests={knockRequests}
@@ -142,7 +142,7 @@ export function MeetingRoom({
       <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <nav
           aria-label="Meeting tools"
-          className="hidden w-[58px] shrink-0 flex-col items-center gap-3 border-r border-[#e8e9e5] bg-[#fdfdfb] py-4 lg:flex"
+          className="hidden w-[58px] shrink-0 flex-col items-center gap-3 border-r border-[#e8e9e5] bg-[#fdfdfb] py-4 lg:flex dark:border-[#1e2330] dark:bg-[#12151e]"
         >
           <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-[13px] bg-gradient-to-br from-[#d8edb5] to-[#f2b59c] text-[#30332a]">
             <Radio className="h-4 w-4" />
@@ -160,8 +160,8 @@ export function MeetingRoom({
                   onClick={() => onToggleSidebar(id)}
                   className={`flex h-10 w-10 items-center justify-center rounded-[14px] transition-all ${
                     active
-                      ? 'bg-[#161714] text-white shadow-sm'
-                      : 'text-[#777a72] hover:bg-[#eff0eb] hover:text-[#242620]'
+                      ? 'bg-[#161714] text-white shadow-sm dark:bg-[#222838]'
+                      : 'text-[#777a72] hover:bg-[#eff0eb] hover:text-[#242620] dark:text-[#8d93a3] dark:hover:bg-[#1c2230] dark:hover:text-[#f3f4f6]'
                   }`}
                 >
                   <Icon className="h-[17px] w-[17px]" />
@@ -175,7 +175,7 @@ export function MeetingRoom({
               aria-label="Host controls"
               title="Host controls"
               onClick={onOpenHostControls}
-              className="flex h-10 w-10 items-center justify-center rounded-[14px] text-[#777a72] transition-colors hover:bg-[#eff0eb] hover:text-[#242620]"
+              className="flex h-10 w-10 items-center justify-center rounded-[14px] text-[#777a72] transition-colors hover:bg-[#eff0eb] hover:text-[#242620] dark:text-[#8d93a3] dark:hover:bg-[#1c2230] dark:hover:text-[#f3f4f6]"
             >
               <Shield className="h-[17px] w-[17px]" />
             </button>
@@ -185,25 +185,25 @@ export function MeetingRoom({
             aria-label="Meeting archives"
             title="Meeting archives"
             onClick={onOpenHistory}
-            className="flex h-10 w-10 items-center justify-center rounded-[14px] text-[#777a72] transition-colors hover:bg-[#eff0eb] hover:text-[#242620]"
+            className="flex h-10 w-10 items-center justify-center rounded-[14px] text-[#777a72] transition-colors hover:bg-[#eff0eb] hover:text-[#242620] dark:text-[#8d93a3] dark:hover:bg-[#1c2230] dark:hover:text-[#f3f4f6]"
           >
             <CalendarDays className="h-[17px] w-[17px]" />
           </button>
         </nav>
 
-        <section className="hidden w-[210px] shrink-0 flex-col border-r border-[#e8e9e5] bg-[#fdfdfb] px-3.5 py-5 xl:flex">
+        <section className="hidden w-[210px] shrink-0 flex-col border-r border-[#e8e9e5] bg-[#fdfdfb] px-3.5 py-5 xl:flex dark:border-[#1e2330] dark:bg-[#12151e]">
           <div className="mb-5">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8e9188]">Live meeting</p>
-            <h1 className="break-words text-[16px] font-semibold leading-snug text-[#242620]">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8e9188] dark:text-[#737887]">Live meeting</p>
+            <h1 className="break-words text-[16px] font-semibold leading-snug text-[#242620] dark:text-[#f3f4f6]">
               {session.title || 'Meeting room'}
             </h1>
-            <p className="mt-1 truncate font-mono text-[10px] text-[#898c84]">{session.roomId}</p>
+            <p className="mt-1 truncate font-mono text-[10px] text-[#898c84] dark:text-[#7e8494]">{session.roomId}</p>
           </div>
 
-          <div className="mb-4 rounded-2xl border border-[#e9ebe5] bg-white p-3.5">
+          <div className="mb-4 rounded-2xl border border-[#e9ebe5] bg-white p-3.5 dark:border-[#202533] dark:bg-[#161a25]">
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-[#363831]">Participants</span>
-              <span className="rounded-full bg-[#f1f2ee] px-2 py-0.5 text-[10px] font-medium text-[#65685f]">
+              <span className="text-[11px] font-semibold text-[#363831] dark:text-[#f3f4f6]">Participants</span>
+              <span className="rounded-full bg-[#f1f2ee] px-2 py-0.5 text-[10px] font-medium text-[#65685f] dark:bg-[#1f2636] dark:text-[#a0a6b5]">
                 {displayParticipants.length + 1}
               </span>
             </div>
@@ -211,15 +211,15 @@ export function MeetingRoom({
               {[{ ...localUser, isLocal: true }, ...displayParticipants].map((participant) => (
                 <div key={participant.id} className="flex min-w-0 items-center gap-2">
                   <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${
-                    participant.isLocal ? 'bg-[#e8f1da] text-[#55683d]' : 'bg-[#f4e7dc] text-[#835d43]'
+                    participant.isLocal ? 'bg-[#e8f1da] text-[#55683d] dark:bg-[#1f2e1a] dark:text-[#88c580]' : 'bg-[#f4e7dc] text-[#835d43] dark:bg-[#342419] dark:text-[#f4a261]'
                   }`}>
                     {participant.name?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[10px] font-medium text-[#34362f]">
+                    <p className="truncate text-[10px] font-medium text-[#34362f] dark:text-[#f3f4f6]">
                       {participant.name}{participant.isLocal ? ' (You)' : ''}
                     </p>
-                    <p className="text-[9px] text-[#92958d]">
+                    <p className="text-[9px] text-[#92958d] dark:text-[#8d93a3]">
                       {participant.isMuted ? 'Muted' : 'Mic on'}
                     </p>
                   </div>
@@ -229,16 +229,16 @@ export function MeetingRoom({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#e9ebe5] bg-white p-3.5">
-            <div className="mb-2 flex items-center gap-2 text-[#67744f]">
+          <div className="rounded-2xl border border-[#e9ebe5] bg-white p-3.5 dark:border-[#202533] dark:bg-[#161a25]">
+            <div className="mb-2 flex items-center gap-2 text-[#67744f] dark:text-[#9bbc6d]">
               <Sparkles className="h-3.5 w-3.5" />
-              <span className="text-[11px] font-semibold text-[#363831]">Meeting tools</span>
+              <span className="text-[11px] font-semibold text-[#363831] dark:text-[#f3f4f6]">Meeting tools</span>
             </div>
-            <p className="text-[10px] leading-relaxed text-[#85887f]">
+            <p className="text-[10px] leading-relaxed text-[#85887f] dark:text-[#9ca3af]">
               Open notes, transcript, chat, or the collaborative whiteboard from the navigation.
             </p>
-            <div className="mt-3 flex items-center gap-1.5 text-[9px] font-medium text-[#70736a]">
-              <span className={`h-1.5 w-1.5 rounded-full ${isListening ? 'bg-[#98b96b]' : 'bg-[#c3c5be]'}`} />
+            <div className="mt-3 flex items-center gap-1.5 text-[9px] font-medium text-[#70736a] dark:text-[#8d93a3]">
+              <span className={`h-1.5 w-1.5 rounded-full ${isListening ? 'bg-[#98b96b]' : 'bg-[#c3c5be] dark:bg-[#4a5060]'}`} />
               {isListening ? 'Transcription active' : 'Transcription paused'}
             </div>
           </div>
@@ -246,7 +246,7 @@ export function MeetingRoom({
 
         <nav
           aria-label="Meeting tools"
-          className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-[#e7e8e3] bg-[#fdfdfb] px-2 py-1.5 scrollbar-none lg:hidden"
+          className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-[#e7e8e3] bg-[#fdfdfb] px-2 py-1.5 scrollbar-none lg:hidden dark:border-[#1e2330] dark:bg-[#12151e]"
         >
           {navigationItems.map(({ id, label, icon: Icon }) => {
             const active = sidebarOpen && activeSidebarTab === id;

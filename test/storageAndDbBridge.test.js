@@ -359,7 +359,7 @@ test('meeting archives are strictly isolated per account and never leak to newly
     assert.equal(accountArchive2.response.status, 404, 'User 2 cannot access User 1 meeting archive');
   } finally {
     await app.close();
-  }
+  } 
 });
 
 
