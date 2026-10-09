@@ -22,7 +22,7 @@ import {
  * Real-Time Socket.io Collaboration, WebRTC Mesh Signaling, and Waiting Room Engine
  */
 
-export function setupSocketHandlers(io) {
+export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}) {
   // Map of active rooms: roomId -> Set of participant objects
   const rooms = new Map();
   const breakouts = new Map();
@@ -30,6 +30,7 @@ export function setupSocketHandlers(io) {
   const admittedKnocks = new Map();
   const roomLocks = new Map();
   const roomChatHistory = new Map();
+  const pendingDisconnects = new Map();
   const removePendingKnock = (roomId, socketId) => {
     const requests = pendingKnocks.get(roomId);
     requests?.delete(socketId);
@@ -347,9 +348,10 @@ export function setupSocketHandlers(io) {
       if (access.accountId) {
         try {
           if (isDbConnected()) {
-            const filter = { roomId: resolvedParentRoomId, userId: access.accountId, socketId: socket.id };
+            const filter = { roomId: resolvedParentRoomId, userId: access.accountId };
             const update = {
               $set: {
+                socketId: socket.id,
                 title: room.title || 'Instant Meeting',
                 hostName: room.hostName || 'Meeting Host',
                 role: access.role,
@@ -361,7 +363,7 @@ export function setupSocketHandlers(io) {
             try {
               await MeetingAttendance.findOneAndUpdate(filter, update, options);
             } catch (error) {
-              // Concurrent join emits for the same socket can race on the unique upsert.
+              // Concurrent join emits for the same user can race on the unique upsert.
               if (error?.code !== 11000) throw error;
               await MeetingAttendance.findOneAndUpdate(filter, update, options);
             }
@@ -379,7 +381,7 @@ export function setupSocketHandlers(io) {
             if (access.role === 'participant' && room) {
               room.attendeeIds = [...new Set([...(room.attendeeIds || []), access.accountId])];
             }
-            inMemoryMeetingAttendance.set(`${resolvedParentRoomId}:${access.accountId}:${socket.id}`, {
+            inMemoryMeetingAttendance.set(`${resolvedParentRoomId}:${access.accountId}`, {
               roomId: resolvedParentRoomId,
               userId: access.accountId,
               socketId: socket.id,
@@ -397,6 +399,25 @@ export function setupSocketHandlers(io) {
       }
       admittedKnocks.delete(socket.id);
       removePendingKnock(resolvedParentRoomId, socket.id);
+
+      // Check if rejoining within disconnect grace period
+      const graceKey = `${resolvedParentRoomId}:${access.participantId}`;
+      const pendingGrace = pendingDisconnects.get(graceKey);
+      let isReconnecting = false;
+      let oldSocketId = null;
+
+      if (pendingGrace) {
+        clearTimeout(pendingGrace.timer);
+        pendingDisconnects.delete(graceKey);
+        isReconnecting = true;
+        oldSocketId = pendingGrace.socketId;
+
+        // Purge old socket from room map
+        if (rooms.has(pendingGrace.roomId)) {
+          rooms.get(pendingGrace.roomId).delete(pendingGrace.socketId);
+        }
+      }
+
       if (socket.roomId && socket.roomId !== roomId) {
         socket.leave(socket.roomId);
         const previousParticipants = rooms.get(socket.roomId);
@@ -444,11 +465,19 @@ export function setupSocketHandlers(io) {
 
       console.log(`👤 [Socket.io] User "${socket.user.name}" joined room: ${roomId} (Total: ${roomParticipants.size})`);
 
-      // Notify existing peers about the new user
-      socket.to(roomId).emit('user-joined', {
-        socketId: socket.id,
-        user: socket.user,
-      });
+      // Notify existing peers about the new user or reconnected user
+      if (isReconnecting && oldSocketId) {
+        socket.to(roomId).emit('user-reconnected', {
+          oldSocketId,
+          newSocketId: socket.id,
+          user: socket.user,
+        });
+      } else {
+        socket.to(roomId).emit('user-joined', {
+          socketId: socket.id,
+          user: socket.user,
+        });
+      }
 
       // Send the list of existing peers in the room to the newly joined user
       const existingPeers = Array.from(roomParticipants.entries())
@@ -897,42 +926,16 @@ export function setupSocketHandlers(io) {
       }
     });
 
-    // Disconnect handling
-    socket.on('disconnect', async () => {
-      console.log(`🔌 [Socket.io] Client disconnected: ${socket.id}`);
+    // Intentional leave handling
+    socket.on('leave-room', async () => {
+      socket.isIntentionalLeave = true;
       const accountId = socket.user?.accountId;
       const parentRoomId = socket.parentRoomId || socket.roomId;
-      const activeParticipant = socket.roomId ? rooms.get(socket.roomId)?.get(socket.id) : null;
-      if (activeParticipant && socket.user?.id && parentRoomId) {
-        try {
-          await persistParticipantState(parentRoomId, {
-            userId: socket.user.id,
-            name: socket.user.name,
-            socketId: null,
-            joinedAt: activeParticipant.joinedAt,
-            isMuted: activeParticipant.isMuted,
-            isVideoOff: activeParticipant.isVideoOff,
-          }, { allowMissing: true });
-        } catch (error) {
-          console.error('Persist disconnected participant state error:', error);
-        }
-      }
-      if (accountId && parentRoomId) {
-        const leftAt = new Date();
-        try {
-          if (isDbConnected()) {
-            await MeetingAttendance.updateOne(
-              { roomId: parentRoomId, userId: accountId, socketId: socket.id },
-              { $set: { leftAt } }
-            );
-          } else {
-            const attendance = inMemoryMeetingAttendance.get(`${parentRoomId}:${accountId}:${socket.id}`);
-            if (attendance) attendance.leftAt = leftAt;
-          }
-        } catch (error) {
-          console.error('Persist meeting attendance end error:', error);
-        }
-      }
+      const graceKey = `${parentRoomId}:${socket.user?.id || socket.id}`;
+      const existingGrace = pendingDisconnects.get(graceKey);
+      if (existingGrace?.timer) clearTimeout(existingGrace.timer);
+      pendingDisconnects.delete(graceKey);
+
       if (socket.roomId && rooms.has(socket.roomId)) {
         const roomMap = rooms.get(socket.roomId);
         roomMap.delete(socket.id);
@@ -945,6 +948,164 @@ export function setupSocketHandlers(io) {
           });
         }
       }
+      if (accountId && parentRoomId) {
+        const leftAt = new Date();
+        try {
+          if (isDbConnected()) {
+            await MeetingAttendance.updateOne(
+              { roomId: parentRoomId, userId: accountId },
+              { $set: { leftAt } }
+            );
+          } else {
+            const attendance = inMemoryMeetingAttendance.get(`${parentRoomId}:${accountId}`);
+            if (attendance) attendance.leftAt = leftAt;
+          }
+        } catch (error) {
+          console.error('Persist meeting attendance leave error:', error);
+        }
+      }
+    });
+
+    // Disconnect handling (with grace period for unannounced drops and reloads)
+    socket.on('disconnect', async () => {
+      console.log(`🔌 [Socket.io] Client disconnected: ${socket.id}`);
+      if (socket.isIntentionalLeave) return;
+
+      const accountId = socket.user?.accountId;
+      const parentRoomId = socket.parentRoomId || socket.roomId;
+
+      // Check whether room is active
+      let isRoomActive = true;
+      if (parentRoomId) {
+        if (isDbConnected()) {
+          try {
+            const roomDoc = await Room.findOne({ roomId: parentRoomId }).lean();
+            if (roomDoc && (roomDoc.isActive === false || roomDoc.endedAt)) {
+              isRoomActive = false;
+            }
+          } catch {
+            // Room check fallback
+          }
+        } else {
+          const memRoom = inMemoryRooms.get(parentRoomId);
+          if (memRoom && (memRoom.isActive === false || memRoom.endedAt)) {
+            isRoomActive = false;
+          }
+        }
+      }
+
+      const activeParticipant = socket.roomId ? rooms.get(socket.roomId)?.get(socket.id) : null;
+      if (activeParticipant && socket.user?.id && parentRoomId && isRoomActive) {
+        try {
+          await persistParticipantState(parentRoomId, {
+            userId: socket.user.id,
+            name: socket.user.name,
+            socketId: null,
+            joinedAt: activeParticipant.joinedAt,
+            isMuted: activeParticipant.isMuted,
+            isVideoOff: activeParticipant.isVideoOff,
+            isDisconnected: true,
+          }, { allowMissing: true });
+        } catch (error) {
+          console.error('Persist disconnected participant state error:', error);
+        }
+      }
+
+      if (socket.roomId && rooms.has(socket.roomId)) {
+        const roomMap = rooms.get(socket.roomId);
+        const participant = roomMap.get(socket.id);
+        if (participant) {
+          if (!isRoomActive || disconnectGracePeriodMs <= 0) {
+            roomMap.delete(socket.id);
+            if (roomMap.size === 0) {
+              rooms.delete(socket.roomId);
+            } else {
+              socket.to(socket.roomId).emit('user-left', {
+                socketId: socket.id,
+                user: socket.user,
+              });
+            }
+            if (accountId && parentRoomId) {
+              const leftAt = new Date();
+              try {
+                if (isDbConnected()) {
+                  await MeetingAttendance.updateOne(
+                    { roomId: parentRoomId, userId: accountId },
+                    { $set: { leftAt } }
+                  );
+                } else {
+                  const attendance = inMemoryMeetingAttendance.get(`${parentRoomId}:${accountId}`);
+                  if (attendance && !attendance.leftAt) attendance.leftAt = leftAt;
+                }
+              } catch (error) {
+                console.error('Persist meeting attendance end error:', error);
+              }
+            }
+            return;
+          }
+
+          participant.isDisconnected = true;
+          participant.disconnectedAt = new Date();
+
+          // Inform peers that participant is temporarily disconnected
+          socket.to(socket.roomId).emit('user-disconnected', {
+            socketId: socket.id,
+            user: socket.user,
+          });
+
+          const graceKey = `${parentRoomId}:${socket.user?.id || socket.id}`;
+          const existingGrace = pendingDisconnects.get(graceKey);
+          if (existingGrace?.timer) clearTimeout(existingGrace.timer);
+
+          const capturedSocketId = socket.id;
+          const capturedRoomId = socket.roomId;
+          const capturedUser = socket.user;
+
+          const timer = setTimeout(async () => {
+            pendingDisconnects.delete(graceKey);
+            if (rooms.has(capturedRoomId)) {
+              const currentRoomMap = rooms.get(capturedRoomId);
+              if (currentRoomMap.has(capturedSocketId)) {
+                currentRoomMap.delete(capturedSocketId);
+                if (currentRoomMap.size === 0) {
+                  rooms.delete(capturedRoomId);
+                } else {
+                  io.to(capturedRoomId).emit('user-left', {
+                    socketId: capturedSocketId,
+                    user: capturedUser,
+                  });
+                }
+              }
+            }
+            if (accountId && parentRoomId) {
+              const leftAt = new Date();
+              try {
+                if (isDbConnected()) {
+                  await MeetingAttendance.updateOne(
+                    { roomId: parentRoomId, userId: accountId },
+                    { $set: { leftAt } }
+                  );
+                } else {
+                  const attendance = inMemoryMeetingAttendance.get(`${parentRoomId}:${accountId}`);
+                  if (attendance) attendance.leftAt = leftAt;
+                }
+              } catch (error) {
+                console.error('Persist meeting attendance end error:', error);
+              }
+            }
+          }, disconnectGracePeriodMs);
+
+          pendingDisconnects.set(graceKey, {
+            timer,
+            socketId: socket.id,
+            roomId: socket.roomId,
+            parentRoomId,
+            user: socket.user,
+            accountId,
+          });
+        }
+      }
+
       if (socket.knockingRoomId) {
         removePendingKnock(socket.knockingRoomId, socket.id);
       }
