@@ -312,7 +312,13 @@ router.post('/:roomId/save', requireRoomArchiveWriteAccess, requireRoomHost, asy
     const record = archivePayload(room, req.roomAccess, req.body);
     if (isDbConnected()) {
       await Room.updateOne(
-        { roomId: req.roomAccess.roomId, hostId: req.roomAccess.participantId },
+        {
+          roomId: req.roomAccess.roomId,
+          $or: [
+            { hostId: req.roomAccess.participantId },
+            ...(req.roomAccess.accountId ? [{ hostId: req.roomAccess.accountId }] : []),
+          ],
+        },
         { $set: { archivedAt: new Date(record.createdAt) } }
       );
       await Transcript.deleteMany({ roomId: req.roomAccess.roomId });

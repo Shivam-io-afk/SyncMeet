@@ -31,7 +31,7 @@ export function issueRoomAccessToken({ roomId, participantId, role, displayName,
 export function verifyRoomAccessToken(token, roomId) {
   if (!JWT_SECRET || typeof token !== 'string' || !token) return null;
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     if (
       payload.type !== 'room-access'
       || payload.roomId !== roomId

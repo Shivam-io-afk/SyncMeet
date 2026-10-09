@@ -122,7 +122,9 @@ router.post('/guest', optionalProtect, async (req, res) => {
 
 router.post('/:roomId/join', optionalProtect, async (req, res) => {
   const { roomId } = req.params;
-  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  const name = typeof req.body?.name === 'string' && req.body.name.trim()
+    ? req.body.name.trim()
+    : (req.user?.name || '');
   if (!roomId || roomId.length > 120 || !name || name.length > 120) {
     return res.status(400).json({ success: false, message: 'Provide a valid room ID and participant name' });
   }

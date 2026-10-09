@@ -38,12 +38,12 @@ export async function connectDB() {
   return connectionAttempt;
 }
 
-// An older schema enforced one attendance row per {roomId, userId}, which made every
-// reload/rejoin (new socket id) fail with a duplicate-key error.
+// Legacy schema enforced unique compound on {roomId, userId, socketId} which caused
+// duplicate attendance rows on reload/reconnect.
 async function dropLegacyAttendanceIndex() {
   try {
-    await mongoose.connection.collection('meetingattendances').dropIndex('roomId_1_userId_1');
-    console.info('Dropped legacy meetingattendances index roomId_1_userId_1');
+    await mongoose.connection.collection('meetingattendances').dropIndex('roomId_1_userId_1_socketId_1');
+    console.info('Dropped legacy meetingattendances index roomId_1_userId_1_socketId_1');
   } catch (error) {
     if (error?.codeName !== 'IndexNotFound' && error?.codeName !== 'NamespaceNotFound' && error?.code !== 27 && error?.code !== 26) {
       console.warn('Could not drop legacy attendance index', { error: error.message });

@@ -289,7 +289,8 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
 
     // 1. Join Room
     socket.on('join-room', async (payload) => {
-      const { roomId, user, accessToken } = readSocketPayload(payload);
+      try {
+        const { roomId, user, accessToken } = readSocketPayload(payload);
       const parentRoomId = user?.parentRoomId || socket.parentRoomId || roomId;
       let access = verifySocketRoomAccess(accessToken, roomId);
       if (!access) {
@@ -510,7 +511,11 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
       if (recentChat.length > 0) {
         socket.emit('room-chat-history', { messages: recentChat });
       }
-    });
+    } catch (error) {
+      console.error('Unhandled join-room error:', error);
+      socket.emit('room-join-error', { message: 'An unexpected error occurred while joining the room' });
+    }
+  });
 
     socket.on('update-media-state', async (payload) => {
       const { isMuted, isVideoOff } = readSocketPayload(payload);

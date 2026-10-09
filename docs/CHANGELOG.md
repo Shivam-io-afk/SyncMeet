@@ -63,3 +63,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Changed**:
   - Cleaned up unused destructured variables in `server/routes/meetingFeatureRoutes.js` and `server/socket/socketHandler.js`.
   - Updated `package.json` `check:server` script to include `test/phase2Hardening.test.js`.
+
+### Backend Logic Hardening & Reliability Sweep
+
+- **Fixed**:
+  - `server/config/db.js`: Corrected `dropLegacyAttendanceIndex()` to target the 3-field index `roomId_1_userId_1_socketId_1` rather than attempting to drop the active compound unique index `roomId_1_userId_1`.
+  - `server/middleware/roomAccessMiddleware.js`: Explicitly locked `jwt.verify` to `algorithms: ['HS256']` in `verifyRoomAccessToken` to prevent algorithm confusion attacks.
+  - `server/routes/roomRoutes.js`: In `POST /api/rooms/:roomId/join`, added fallback to `req.user?.name` if `req.body.name` is omitted by authenticated users.
+  - `server/routes/historyRoutes.js`: In `POST /api/history/:roomId/save`, updated host query on `Room.updateOne` to match `{ roomId, $or: [{ hostId: participantId }, { hostId: accountId }] }`.
+  - `server/socket/socketHandler.js`: Wrapped `join-room` with top-level `try/catch` emitting `room-join-error` on unhandled exceptions to prevent socket crash/desync.
+
