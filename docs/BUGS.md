@@ -6,15 +6,16 @@ This document tracks all identified architectural and functional defects, catego
 
 ## Defect Summary
 
-| Bug ID      | Severity | Title                                                                                                  | File & Line                                                                       | Status    |
-| :---------- | :------- | :----------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------- | :-------- |
-| **BUG-001** | **P0**   | Participant disappears on page reload due to immediate disconnect broadcast                            | `server/socket/socketHandler.js:936-946`                                          | **OPEN**  |
-| **BUG-002** | **P0**   | Missing REST endpoint `GET /api/rooms/:roomId/state` for state rehydration on reload/rejoin            | `server/routes/roomRoutes.js:160`                                                 | **OPEN**  |
-| **BUG-003** | **P1**   | `MeetingAttendance` unique compound index includes `socketId`, creating duplicate attendance on rejoin | `server/models/MeetingAttendance.js:14`, `server/socket/socketHandler.js:350-367` | **OPEN**  |
-| **BUG-004** | **P1**   | Non-host authenticated users assigned random `guest-` IDs on room join                                 | `server/routes/roomRoutes.js:139-140`                                             | **OPEN**  |
-| **BUG-005** | **P1**   | Video tile keying in frontend uses `peer.socketId` instead of stable `userId`                          | `src/components/meeting/MeetingRoom.jsx:49-58`                                    | **OPEN**  |
-| **BUG-007** | **P2**   | In-memory presence cache in `memoryMeetingStore` can desynchronize from MongoDB                        | `server/socket/socketHandler.js:51-101`, `server/store/memoryMeetingStore.js`     | **OPEN**  |
-| **BUG-008** | **P0**   | Meeting archives / DB archives leaks previous users' local IndexedDB records to new accounts           | `src/components/history/MeetingHistoryModal.jsx`, `src/services/dbService.js`     | **FIXED** |
+| Bug ID      | Severity | Title                                                                                                  | File & Line                                                                       | Status       |
+| :---------- | :------- | :----------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------- | :----------- |
+| **BUG-001** | **P0**   | Participant disappears on page reload due to immediate disconnect broadcast                            | `server/socket/socketHandler.js:936-946`                                          | **RESOLVED** |
+| **BUG-002** | **P0**   | Missing REST endpoint `GET /api/rooms/:roomId/state` for state rehydration on reload/rejoin            | `server/routes/roomRoutes.js:160`                                                 | **RESOLVED** |
+| **BUG-003** | **P1**   | `MeetingAttendance` unique compound index includes `socketId`, creating duplicate attendance on rejoin | `server/models/MeetingAttendance.js:14`, `server/socket/socketHandler.js:350-367` | **RESOLVED** |
+| **BUG-004** | **P1**   | Non-host authenticated users assigned random `guest-` IDs on room join                                 | `server/routes/roomRoutes.js:139-140`                                             | **RESOLVED** |
+| **BUG-005** | **P1**   | Video tile keying in frontend uses `peer.socketId` instead of stable `userId`                          | `src/components/meeting/MeetingRoom.jsx:49-58`                                    | **RESOLVED** |
+| **BUG-006** | **P2**   | Client meeting-scoped `sessionStorage` not cleaned up on leave or validated against active URL         | `src/App.jsx:20-55`, `src/services/apiService.js:46-55`                           | **RESOLVED** |
+| **BUG-007** | **P2**   | In-memory presence cache in `memoryMeetingStore` can desynchronize from MongoDB                        | `server/socket/socketHandler.js:51-101`, `server/store/memoryMeetingStore.js`     | **RESOLVED** |
+| **BUG-008** | **P0**   | Meeting archives / DB archives leaks previous users' local IndexedDB records to new accounts           | `src/components/history/MeetingHistoryModal.jsx`, `src/services/dbService.js`     | **RESOLVED** |
 
 ---
 
