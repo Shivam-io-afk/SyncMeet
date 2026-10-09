@@ -179,29 +179,29 @@ export function MeetingPollsPanel({ roomId, currentUser, isHost = false }) {
   };
 
   return (
-    <section className="flex h-full flex-col overflow-hidden bg-[#fbfbf8]">
-      <header className="flex items-center justify-between border-b border-[#ecece7] bg-white px-4 py-3">
-        <div className="flex items-center gap-2"><BarChart3 className="h-4 w-4 text-[#8aa767]" /><h2 className="text-xs font-bold text-[#32342e]">Polls & Q&amp;A</h2></div>
-        <span className="text-[10px] text-[#85877f]">{activeView === 'polls' ? `${polls.length} polls` : `${questions.length} questions`}</span>
+    <section className="flex h-full flex-col overflow-hidden bg-[#fbfbf8] dark:bg-[#12151e]">
+      <header className="flex items-center justify-between border-b border-[#ecece7] bg-white px-4 py-3 dark:border-[#202636] dark:bg-[#151923]">
+        <div className="flex items-center gap-2"><BarChart3 className="h-4 w-4 text-[#8aa767] dark:text-[#9bbc6d]" /><h2 className="text-xs font-bold text-[#32342e] dark:text-[#f3f4f6]">Polls & Q&amp;A</h2></div>
+        <span className="text-[10px] text-[#85877f] dark:text-[#8d93a3]">{activeView === 'polls' ? `${polls.length} polls` : `${questions.length} questions`}</span>
       </header>
-      <div className="flex shrink-0 gap-1 border-b border-[#ecece7] bg-white px-3 py-2">
+      <div className="flex shrink-0 gap-1 border-b border-[#ecece7] bg-white px-3 py-2 dark:border-[#202636] dark:bg-[#151923]">
         {[{ id: 'polls', label: 'Polls', Icon: BarChart3 }, { id: 'questions', label: 'Questions', Icon: MessageCircle }].map(({ id, label, Icon }) => (
-          <button key={id} type="button" aria-pressed={activeView === id} onClick={() => setActiveView(id)} className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[10px] font-semibold ${activeView === id ? 'bg-[#171815] text-white' : 'text-[#777a72] hover:bg-[#f1f2ee]'}`}><Icon className="h-3.5 w-3.5" />{label}</button>
+          <button key={id} type="button" aria-pressed={activeView === id} onClick={() => setActiveView(id)} className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[10px] font-semibold ${activeView === id ? 'bg-[#171815] text-white dark:bg-[#222838]' : 'text-[#777a72] hover:bg-[#f1f2ee] dark:text-[#a0a6b5] dark:hover:bg-[#1e2434]'}`}><Icon className="h-3.5 w-3.5" />{label}</button>
         ))}
       </div>
       {activeView === 'polls' ? (
       <>
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
-        {error && <p role="alert" className="rounded-xl bg-[#fae8e4] px-3 py-2 text-[10px] text-[#a85f51]">{error}</p>}
-        {loading ? <div className="flex justify-center py-8"><LoaderCircle className="h-5 w-5 animate-spin text-[#8aa767]" /></div> : polls.length ? polls.map((poll) => {
+        {error && <p role="alert" className="rounded-xl bg-[#fae8e4] px-3 py-2 text-[10px] text-[#a85f51] dark:bg-[#341d1a] dark:text-[#f87171]">{error}</p>}
+        {loading ? <div className="flex justify-center py-8"><LoaderCircle className="h-5 w-5 animate-spin text-[#8aa767] dark:text-[#9bbc6d]" /></div> : polls.length ? polls.map((poll) => {
           const pollId = getPollId(poll);
           const totalVotes = poll.options.reduce((total, option) => total + (option.voters?.length || 0), 0);
           const mySelections = selectedOptions[pollId] || [];
           return (
-            <article key={pollId} className="rounded-2xl border border-[#e8e9e3] bg-white p-3.5">
+            <article key={pollId} className="rounded-2xl border border-[#e8e9e3] bg-white p-3.5 dark:border-[#202636] dark:bg-[#161a25]">
               <div className="flex items-start justify-between gap-2">
-                <div><h3 className="text-xs font-semibold text-[#3b3d36]">{poll.question}</h3><p className="mt-1 text-[9px] text-[#92948d]">{totalVotes} {totalVotes === 1 ? 'vote' : 'votes'} · {poll.allowMultiple ? 'Select all that apply' : 'Choose one'}</p></div>
-                {isHost && poll.status === 'open' && <button type="button" onClick={() => void handleClose(poll)} aria-label="Close poll" className="rounded-lg p-1 text-[#92948d] hover:bg-[#f1f2ee]"><X className="h-3.5 w-3.5" /></button>}
+                <div><h3 className="text-xs font-semibold text-[#3b3d36] dark:text-[#f3f4f6]">{poll.question}</h3><p className="mt-1 text-[9px] text-[#92948d] dark:text-[#8d93a3]">{totalVotes} {totalVotes === 1 ? 'vote' : 'votes'} · {poll.allowMultiple ? 'Select all that apply' : 'Choose one'}</p></div>
+                {isHost && poll.status === 'open' && <button type="button" onClick={() => void handleClose(poll)} aria-label="Close poll" className="rounded-lg p-1 text-[#92948d] hover:bg-[#f1f2ee] dark:text-[#8d93a3] dark:hover:bg-[#202737]"><X className="h-3.5 w-3.5" /></button>}
               </div>
               <div className="mt-3 space-y-1.5">
                 {poll.options.map((option) => {
@@ -209,35 +209,35 @@ export function MeetingPollsPanel({ roomId, currentUser, isHost = false }) {
                   const percentage = totalVotes ? Math.round(voteCount / totalVotes * 100) : 0;
                   const hasVoted = poll.status === 'closed' || totalVotes > 0;
                   return (
-                    <button key={option.id} type="button" disabled={poll.status !== 'open'} onClick={() => toggleOption(poll, option.id)} className={`relative flex w-full items-center justify-between overflow-hidden rounded-xl border px-3 py-2 text-left text-[11px] ${mySelections.includes(option.id) ? 'border-[#b9cb9a] bg-[#f1f4e9]' : 'border-[#ecece7] bg-[#fbfbf8]'}`}>
-                      {hasVoted && <span className="absolute inset-y-0 left-0 bg-[#edf2e5]" style={{ width: `${percentage}%` }} />}
-                      <span className="relative flex items-center gap-2 text-[#50534b]">{mySelections.includes(option.id) ? <Check className="h-3.5 w-3.5 text-[#718b4f]" /> : <span className="h-3.5 w-3.5 rounded-full border border-[#c9cbc3]" />}{option.text}</span>
-                      {hasVoted && <span className="relative text-[9px] text-[#777a72]">{percentage}%</span>}
+                    <button key={option.id} type="button" disabled={poll.status !== 'open'} onClick={() => toggleOption(poll, option.id)} className={`relative flex w-full items-center justify-between overflow-hidden rounded-xl border px-3 py-2 text-left text-[11px] ${mySelections.includes(option.id) ? 'border-[#b9cb9a] bg-[#f1f4e9] dark:border-[#384e2a] dark:bg-[#1f2e1a]' : 'border-[#ecece7] bg-[#fbfbf8] dark:border-[#242b3b] dark:bg-[#1a1f2c]'}`}>
+                      {hasVoted && <span className="absolute inset-y-0 left-0 bg-[#edf2e5] dark:bg-[#273824]" style={{ width: `${percentage}%` }} />}
+                      <span className="relative flex items-center gap-2 text-[#50534b] dark:text-[#e5e7eb]">{mySelections.includes(option.id) ? <Check className="h-3.5 w-3.5 text-[#718b4f] dark:text-[#9bbc6d]" /> : <span className="h-3.5 w-3.5 rounded-full border border-[#c9cbc3] dark:border-[#4a5266]" />}{option.text}</span>
+                      {hasVoted && <span className="relative text-[9px] text-[#777a72] dark:text-[#a0a6b5]">{percentage}%</span>}
                     </button>
                   );
                 })}
               </div>
-              {poll.status === 'open' && <button type="button" onClick={() => void handleVote(poll)} disabled={!mySelections.length} className="mt-2 w-full rounded-lg bg-[#171815] px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-40">Submit vote</button>}
-              {poll.status === 'closed' && <p className="mt-2 text-[9px] font-medium text-[#92948d]">Poll closed</p>}
+              {poll.status === 'open' && <button type="button" onClick={() => void handleVote(poll)} disabled={!mySelections.length} className="mt-2 w-full rounded-lg bg-[#171815] px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-40 dark:bg-[#9bbc6d] dark:text-[#12151e]">Submit vote</button>}
+              {poll.status === 'closed' && <p className="mt-2 text-[9px] font-medium text-[#92948d] dark:text-[#8d93a3]">Poll closed</p>}
             </article>
           );
-        }) : <p className="rounded-xl border border-dashed border-[#dfe1d9] px-4 py-8 text-center text-xs text-[#85877f]">Create a quick poll to gather decisions from the room.</p>}
+        }) : <p className="rounded-xl border border-dashed border-[#dfe1d9] px-4 py-8 text-center text-xs text-[#85877f] dark:border-[#242b3b] dark:text-[#8d93a3]">Create a quick poll to gather decisions from the room.</p>}
       </div>
       {isHost && (
-        <form onSubmit={handleCreate} className="space-y-2.5 border-t border-[#ecece7] bg-white p-3">
-          <input value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={300} placeholder="Ask the meeting a question…" className="w-full rounded-xl border border-[#e8e9e3] bg-[#f7f8f5] px-3 py-2 text-xs outline-none focus:border-[#9bbc6d]" />
+        <form onSubmit={handleCreate} className="space-y-2.5 border-t border-[#ecece7] bg-white p-3 dark:border-[#202636] dark:bg-[#151923]">
+          <input value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={300} placeholder="Ask the meeting a question…" className="w-full rounded-xl border border-[#e8e9e3] bg-[#f7f8f5] px-3 py-2 text-xs outline-none focus:border-[#9bbc6d] dark:border-[#242b3b] dark:bg-[#1a1f2c] dark:text-[#f3f4f6] dark:placeholder-[#6b7280]" />
           {options.map((option, index) => (
             <div key={index} className="flex items-center gap-1.5">
-              <input value={option} onChange={(event) => setOptions((current) => current.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} maxLength={120} placeholder={`Option ${index + 1}`} className="min-w-0 flex-1 rounded-lg border border-[#e8e9e3] bg-[#fbfbf8] px-2.5 py-2 text-[10px] outline-none focus:border-[#9bbc6d]" />
-              {options.length > 2 && <button type="button" aria-label={`Remove option ${index + 1}`} onClick={() => setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="rounded p-1 text-[#92948d]"><X className="h-3.5 w-3.5" /></button>}
+              <input value={option} onChange={(event) => setOptions((current) => current.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} maxLength={120} placeholder={`Option ${index + 1}`} className="min-w-0 flex-1 rounded-lg border border-[#e8e9e3] bg-[#fbfbf8] px-2.5 py-2 text-[10px] outline-none focus:border-[#9bbc6d] dark:border-[#242b3b] dark:bg-[#1a1f2c] dark:text-[#f3f4f6] dark:placeholder-[#6b7280]" />
+              {options.length > 2 && <button type="button" aria-label={`Remove option ${index + 1}`} onClick={() => setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="rounded p-1 text-[#92948d] dark:text-[#8d93a3]"><X className="h-3.5 w-3.5" /></button>}
             </div>
           ))}
           <div className="flex items-center justify-between">
             <div className="flex gap-2">
-              <button type="button" onClick={() => setOptions((current) => current.length < 8 ? [...current, ''] : current)} disabled={options.length >= 8} className="inline-flex items-center gap-1 text-[9px] font-semibold text-[#718b4f] disabled:opacity-40"><CirclePlus className="h-3 w-3" />Option</button>
-              <label className="flex items-center gap-1 text-[9px] text-[#777a72]"><input type="checkbox" checked={allowMultiple} onChange={(event) => setAllowMultiple(event.target.checked)} />Multiple choice</label>
+              <button type="button" onClick={() => setOptions((current) => current.length < 8 ? [...current, ''] : current)} disabled={options.length >= 8} className="inline-flex items-center gap-1 text-[9px] font-semibold text-[#718b4f] disabled:opacity-40 dark:text-[#9bbc6d]"><CirclePlus className="h-3 w-3" />Option</button>
+              <label className="flex items-center gap-1 text-[9px] text-[#777a72] dark:text-[#a0a6b5]"><input type="checkbox" checked={allowMultiple} onChange={(event) => setAllowMultiple(event.target.checked)} />Multiple choice</label>
             </div>
-            <button type="submit" disabled={saving || !question.trim()} className="inline-flex items-center gap-1 rounded-lg bg-[#171815] px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-40">{saving ? <LoaderCircle className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}Create poll</button>
+            <button type="submit" disabled={saving || !question.trim()} className="inline-flex items-center gap-1 rounded-lg bg-[#171815] px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-40 dark:bg-[#9bbc6d] dark:text-[#12151e]">{saving ? <LoaderCircle className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}Create poll</button>
           </div>
         </form>
       )}
@@ -245,28 +245,28 @@ export function MeetingPollsPanel({ roomId, currentUser, isHost = false }) {
       ) : (
         <>
           <div className="flex-1 space-y-2 overflow-y-auto p-3">
-            {error && <p role="alert" className="rounded-xl bg-[#fae8e4] px-3 py-2 text-[10px] text-[#a85f51]">{error}</p>}
-            {loading ? <div className="flex justify-center py-8"><LoaderCircle className="h-5 w-5 animate-spin text-[#8aa767]" /></div> : questions.length ? [...questions].sort((a, b) => (b.upvoterIds?.length || 0) - (a.upvoterIds?.length || 0)).map((item) => {
+            {error && <p role="alert" className="rounded-xl bg-[#fae8e4] px-3 py-2 text-[10px] text-[#a85f51] dark:bg-[#341d1a] dark:text-[#f87171]">{error}</p>}
+            {loading ? <div className="flex justify-center py-8"><LoaderCircle className="h-5 w-5 animate-spin text-[#8aa767] dark:text-[#9bbc6d]" /></div> : questions.length ? [...questions].sort((a, b) => (b.upvoterIds?.length || 0) - (a.upvoterIds?.length || 0)).map((item) => {
               const id = getQuestionId(item);
               const myId = currentUser?.id || socketService.getSocketId() || 'guest';
               const hasUpvoted = item.upvoterIds?.includes(myId);
               return (
-                <article key={id} className="rounded-2xl border border-[#e8e9e3] bg-white p-3">
-                  <p className="text-xs leading-relaxed text-[#3b3d36]">{item.text}</p>
+                <article key={id} className="rounded-2xl border border-[#e8e9e3] bg-white p-3 dark:border-[#202636] dark:bg-[#161a25]">
+                  <p className="text-xs leading-relaxed text-[#3b3d36] dark:text-[#f3f4f6]">{item.text}</p>
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="truncate text-[9px] text-[#92948d]">Asked by {item.authorName}</span>
+                    <span className="truncate text-[9px] text-[#92948d] dark:text-[#8d93a3]">Asked by {item.authorName}</span>
                     <div className="flex items-center gap-1.5">
-                      {isHost && <button type="button" onClick={() => void handleQuestionAnswered(item)} className={`rounded-lg px-2 py-1 text-[9px] font-semibold ${item.status === 'answered' ? 'bg-[#f1f4e9] text-[#607745]' : 'bg-[#f1f2ee] text-[#686b63]'}`}>{item.status === 'answered' ? 'Answered' : 'Mark answered'}</button>}
-                      <button type="button" aria-pressed={Boolean(hasUpvoted)} onClick={() => void handleQuestionUpvote(item)} className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[9px] font-semibold ${hasUpvoted ? 'bg-[#f1f4e9] text-[#607745]' : 'bg-[#f1f2ee] text-[#686b63]'}`}><ThumbsUp className="h-3 w-3" />{item.upvoterIds?.length || 0}</button>
+                      {isHost && <button type="button" onClick={() => void handleQuestionAnswered(item)} className={`rounded-lg px-2 py-1 text-[9px] font-semibold ${item.status === 'answered' ? 'bg-[#f1f4e9] text-[#607745] dark:bg-[#1f2e1a] dark:text-[#88c580]' : 'bg-[#f1f2ee] text-[#686b63] dark:bg-[#202636] dark:text-[#a0a6b5]'}`}>{item.status === 'answered' ? 'Answered' : 'Mark answered'}</button>}
+                      <button type="button" aria-pressed={Boolean(hasUpvoted)} onClick={() => void handleQuestionUpvote(item)} className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[9px] font-semibold ${hasUpvoted ? 'bg-[#f1f4e9] text-[#607745] dark:bg-[#1f2e1a] dark:text-[#88c580]' : 'bg-[#f1f2ee] text-[#686b63] dark:bg-[#202636] dark:text-[#a0a6b5]'}`}><ThumbsUp className="h-3 w-3" />{item.upvoterIds?.length || 0}</button>
                     </div>
                   </div>
                 </article>
               );
-            }) : <p className="rounded-xl border border-dashed border-[#dfe1d9] px-4 py-8 text-center text-xs text-[#85877f]">Questions from the room will appear here. Upvote to surface what matters most.</p>}
+            }) : <p className="rounded-xl border border-dashed border-[#dfe1d9] px-4 py-8 text-center text-xs text-[#85877f] dark:border-[#242b3b] dark:text-[#8d93a3]">Questions from the room will appear here. Upvote to surface what matters most.</p>}
           </div>
-          <form onSubmit={handleSubmitQuestion} className="flex gap-2 border-t border-[#ecece7] bg-white p-3">
-            <input value={questionText} onChange={(event) => setQuestionText(event.target.value)} maxLength={1000} placeholder="Add a question for the host…" className="min-w-0 flex-1 rounded-xl border border-[#e8e9e3] bg-[#f7f8f5] px-3 py-2 text-xs outline-none focus:border-[#9bbc6d]" />
-            <button type="submit" disabled={saving || !questionText.trim()} aria-label="Submit question" className="flex items-center gap-1 rounded-xl bg-[#171815] px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-40">{saving ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}Ask</button>
+          <form onSubmit={handleSubmitQuestion} className="flex gap-2 border-t border-[#ecece7] bg-white p-3 dark:border-[#202636] dark:bg-[#151923]">
+            <input value={questionText} onChange={(event) => setQuestionText(event.target.value)} maxLength={1000} placeholder="Add a question for the host…" className="min-w-0 flex-1 rounded-xl border border-[#e8e9e3] bg-[#f7f8f5] px-3 py-2 text-xs outline-none focus:border-[#9bbc6d] dark:border-[#242b3b] dark:bg-[#1a1f2c] dark:text-[#f3f4f6] dark:placeholder-[#6b7280]" />
+            <button type="submit" disabled={saving || !questionText.trim()} aria-label="Submit question" className="flex items-center gap-1 rounded-xl bg-[#171815] px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-40 dark:bg-[#9bbc6d] dark:text-[#12151e]">{saving ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}Ask</button>
           </form>
         </>
       )}

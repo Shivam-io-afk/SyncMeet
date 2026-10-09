@@ -149,23 +149,23 @@ export function WhiteboardPanel({ onSaveWhiteboard }) {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#f8f8f5] text-[#30322c]">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#e8e9e5] bg-[#fbfbf8] px-3 py-2.5">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#f8f8f5] text-[#30322c] dark:bg-[#12151e] dark:text-[#f3f4f6]">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#e8e9e5] bg-[#fbfbf8] px-3 py-2.5 dark:border-[#202636] dark:bg-[#151923]">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#f1f4e9] text-[#718b4f]">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#f1f4e9] text-[#718b4f] dark:bg-[#1f2e1a] dark:text-[#9bbc6d]">
             <Palette className="h-3.5 w-3.5" />
           </span>
-          <span className="truncate text-[11px] font-semibold text-[#3b3d36]">Meeting canvas</span>
+          <span className="truncate text-[11px] font-semibold text-[#3b3d36] dark:text-[#f3f4f6]">Meeting canvas</span>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1 rounded-xl border border-[#e8e9e3] bg-[#f3f4ef] p-1">
+        <div className="flex shrink-0 items-center gap-1 rounded-xl border border-[#e8e9e3] bg-[#f3f4ef] p-1 dark:border-[#242b3b] dark:bg-[#1a1f2c]">
           <button
             type="button"
             onClick={() => setMode('pen')}
             aria-label="Pen tool"
             aria-pressed={mode === 'pen'}
             className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50 ${
-              mode === 'pen' ? 'bg-white text-[#536a37] shadow-sm' : 'text-[#777a72] hover:bg-white/70 hover:text-[#34362f]'
+              mode === 'pen' ? 'bg-white text-[#536a37] shadow-sm dark:bg-[#252c3d] dark:text-[#9bbc6d]' : 'text-[#777a72] hover:bg-white/70 hover:text-[#34362f] dark:text-[#a0a6b5] dark:hover:bg-[#202737] dark:hover:text-[#f3f4f6]'
             }`}
             title="Pen tool"
           >
@@ -177,7 +177,7 @@ export function WhiteboardPanel({ onSaveWhiteboard }) {
             aria-label="Eraser tool"
             aria-pressed={mode === 'eraser'}
             className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50 ${
-              mode === 'eraser' ? 'bg-white text-[#536a37] shadow-sm' : 'text-[#777a72] hover:bg-white/70 hover:text-[#34362f]'
+              mode === 'eraser' ? 'bg-white text-[#536a37] shadow-sm dark:bg-[#252c3d] dark:text-[#9bbc6d]' : 'text-[#777a72] hover:bg-white/70 hover:text-[#34362f] dark:text-[#a0a6b5] dark:hover:bg-[#202737] dark:hover:text-[#f3f4f6]'
             }`}
             title="Eraser tool"
           >
@@ -185,7 +185,7 @@ export function WhiteboardPanel({ onSaveWhiteboard }) {
           </button>
         </div>
 
-        <div role="group" aria-label="Pen color" className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#e8e9e3] bg-white px-2 py-1.5">
+        <div role="group" aria-label="Pen color" className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#e8e9e3] bg-white px-2 py-1.5 dark:border-[#242b3b] dark:bg-[#1a1f2c]">
           {colors.map((c) => (
             <button
               key={c}
@@ -206,7 +206,7 @@ export function WhiteboardPanel({ onSaveWhiteboard }) {
             type="button"
             onClick={handleClear}
             aria-label="Clear canvas"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#85877f] transition-colors hover:bg-[#fff2ee] hover:text-[#b94f43] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97868]/40"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#85877f] transition-colors hover:bg-[#fff2ee] hover:text-[#b94f43] dark:text-[#8d93a3] dark:hover:bg-[#341d1a] dark:hover:text-[#f87171] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97868]/40"
             title="Clear canvas"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -215,7 +215,7 @@ export function WhiteboardPanel({ onSaveWhiteboard }) {
             type="button"
             onClick={handleDownload}
             aria-label="Export canvas as PNG"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#e5e7df] bg-white text-[#718b4f] transition-colors hover:bg-[#f1f4e9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#e5e7df] bg-white text-[#718b4f] transition-colors hover:bg-[#f1f4e9] dark:border-[#242b3b] dark:bg-[#1a1f2c] dark:text-[#9bbc6d] dark:hover:bg-[#22293a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50"
             title="Export PNG snapshot"
           >
             <Download className="h-3.5 w-3.5" />
@@ -223,14 +223,14 @@ export function WhiteboardPanel({ onSaveWhiteboard }) {
         </div>
       </div>
 
-      <div className="relative flex min-h-0 flex-1 cursor-crosshair overflow-hidden bg-[#eef0ed] p-3">
+      <div className="relative flex min-h-0 flex-1 cursor-crosshair overflow-hidden bg-[#eef0ed] p-3 dark:bg-[#0c0e14]">
         <canvas
           ref={canvasRef}
           onPointerDown={startDrawing}
           onPointerMove={draw}
           onPointerUp={stopDrawing}
           onPointerCancel={stopDrawing}
-          className="h-full w-full touch-none rounded-xl border border-[#e1e3dc] bg-white shadow-[0_4px_14px_rgba(37,43,34,0.06)]"
+          className="h-full w-full touch-none rounded-xl border border-[#e1e3dc] bg-white shadow-[0_4px_14px_rgba(37,43,34,0.06)] dark:border-[#202636]"
         />
       </div>
     </div>

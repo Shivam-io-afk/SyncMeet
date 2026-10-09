@@ -76,3 +76,4 @@ export function ThemeToggle({ variant = 'header', className = '' }) {
     </button>
   );
 }
+

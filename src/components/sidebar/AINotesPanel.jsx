@@ -32,11 +32,11 @@ export function AINotesPanel({
   const getPriorityBadge = (priority) => {
     switch (priority?.toLowerCase()) {
       case 'high':
-        return 'bg-[#fae8e4] text-[#a85f51] border-[#f0d2ca]';
+        return 'bg-[#fae8e4] text-[#a85f51] border-[#f0d2ca] dark:bg-[#341d1a] dark:text-[#f87171] dark:border-[#522521]';
       case 'medium':
-        return 'bg-[#f7f0df] text-[#92773f] border-[#eadfbe]';
+        return 'bg-[#f7f0df] text-[#92773f] border-[#eadfbe] dark:bg-[#342714] dark:text-[#fbbf24] dark:border-[#523d1e]';
       default:
-        return 'bg-[#edf0e8] text-[#687950] border-[#dce4cf]';
+        return 'bg-[#edf0e8] text-[#687950] border-[#dce4cf] dark:bg-[#1a2818] dark:text-[#a3e635] dark:border-[#2e452a]';
     }
   };
 
@@ -94,10 +94,10 @@ ${notesData.openQuestions?.map(q => `- ${q}`).join('\n') || '- None'}
   return (
     <div className="flex flex-col h-full overflow-hidden select-none">
       {/* Top Action Bar */}
-      <div className="flex items-center justify-between border-b border-[#ecece7] bg-white px-3.5 py-3">
+      <div className="flex items-center justify-between border-b border-[#ecece7] bg-white px-3.5 py-3 dark:border-[#202636] dark:bg-[#151923]">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-[#9aab76]" />
-          <span className="text-xs font-bold text-[#32342e]">Key points</span>
+          <Sparkles className="h-4 w-4 text-[#9aab76] dark:text-[#9bbc6d]" />
+          <span className="text-xs font-bold text-[#32342e] dark:text-[#f3f4f6]">Key points</span>
         </div>
 
         <button
@@ -106,8 +106,8 @@ ${notesData.openQuestions?.map(q => `- ${q}`).join('\n') || '- None'}
           disabled={isGenerating || transcriptCount === 0}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
             isGenerating
-              ? 'animate-pulse cursor-not-allowed bg-[#eff0eb] text-[#8b8e85]'
-              : 'bg-[#171815] text-white hover:bg-[#363831] active:scale-95'
+              ? 'animate-pulse cursor-not-allowed bg-[#eff0eb] text-[#8b8e85] dark:bg-[#1f2636] dark:text-[#7e8596]'
+              : 'bg-[#171815] text-white hover:bg-[#363831] active:scale-95 dark:bg-[#9bbc6d] dark:text-[#12151e] dark:hover:bg-[#88a95c]'
           }`}
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
@@ -118,18 +118,18 @@ ${notesData.openQuestions?.map(q => `- ${q}`).join('\n') || '- None'}
       {/* Notes Scroll Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {!notesData ? (
-          <div className="flex h-full flex-col items-center justify-center p-6 text-center text-[#85887f]">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e5eadb] bg-[#f0f4e9]">
-              <Sparkles className="h-6 w-6 text-[#8fa765]" />
+          <div className="flex h-full flex-col items-center justify-center p-6 text-center text-[#85887f] dark:text-[#8d93a3]">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e5eadb] bg-[#f0f4e9] dark:border-[#203022] dark:bg-[#172318]">
+              <Sparkles className="h-6 w-6 text-[#8fa765] dark:text-[#9bbc6d]" />
             </div>
-            <h3 className="mb-1 text-sm font-semibold text-[#393b35]">No AI notes yet</h3>
-            <p className="mb-4 max-w-[240px] text-xs text-[#85887f]">
+            <h3 className="mb-1 text-sm font-semibold text-[#393b35] dark:text-[#f3f4f6]">No AI notes yet</h3>
+            <p className="mb-4 max-w-[240px] text-xs text-[#85887f] dark:text-[#9ca3af]">
               Speak in the meeting to build the transcript, then click below to generate instant summaries.
             </p>
             <button
               onClick={onGenerateNotes}
               disabled={transcriptCount === 0}
-              className="flex items-center gap-2 rounded-xl bg-[#171815] px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-[#363831] disabled:opacity-40"
+              className="flex items-center gap-2 rounded-xl bg-[#171815] px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-[#363831] disabled:opacity-40 dark:bg-[#9bbc6d] dark:text-[#12151e] dark:hover:bg-[#88a95c]"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Generate AI Notes ({transcriptCount} dialog lines)</span>
@@ -138,30 +138,30 @@ ${notesData.openQuestions?.map(q => `- ${q}`).join('\n') || '- None'}
         ) : (
           <>
             {/* 1. Executive Summary */}
-            <div className="rounded-2xl border border-[#ecece7] bg-white p-4">
+            <div className="rounded-2xl border border-[#ecece7] bg-white p-4 dark:border-[#202636] dark:bg-[#161a25]">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#9b7863]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#9b7863] dark:text-[#e09f67]">
                   {notesData.generationSource === 'gemini_api' ? 'AI summary' : 'Transcript summary'}
                 </span>
                 {notesData.generationSource && notesData.generationSource !== 'gemini_api' && (
-                  <span className="text-[10px] text-[#92958d]">Draft</span>
+                  <span className="text-[10px] text-[#92958d] dark:text-[#8d93a3]">Draft</span>
                 )}
               </div>
-              <p className="text-xs leading-relaxed text-[#50534b]">
+              <p className="text-xs leading-relaxed text-[#50534b] dark:text-[#d1d5db]">
                 {notesData.summary}
               </p>
             </div>
 
             {/* 2. Key Decisions */}
             {notesData.decisions && notesData.decisions.length > 0 && (
-              <div className="rounded-2xl border border-[#ecece7] bg-white p-4">
-                <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[#829866]">
+              <div className="rounded-2xl border border-[#ecece7] bg-white p-4 dark:border-[#202636] dark:bg-[#161a25]">
+                <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[#829866] dark:text-[#9bbc6d]">
                   Key Decisions Agreed
                 </span>
                 <ul className="space-y-2">
                   {notesData.decisions.map((decision, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-[#50534b]">
-                      <span className="font-bold text-[#9bb776]">•</span>
+                    <li key={i} className="flex items-start gap-2 text-xs text-[#50534b] dark:text-[#d1d5db]">
+                      <span className="font-bold text-[#9bb776] dark:text-[#9bbc6d]">•</span>
                       <span>{decision}</span>
                     </li>
                   ))}
@@ -171,8 +171,8 @@ ${notesData.openQuestions?.map(q => `- ${q}`).join('\n') || '- None'}
 
             {/* 3. Action Items */}
             {notesData.actionItems && notesData.actionItems.length > 0 && (
-              <div className="rounded-2xl border border-[#ecece7] bg-white p-4">
-                <span className="mb-2.5 block text-[10px] font-bold uppercase tracking-wider text-[#9b7863]">
+              <div className="rounded-2xl border border-[#ecece7] bg-white p-4 dark:border-[#202636] dark:bg-[#161a25]">
+                <span className="mb-2.5 block text-[10px] font-bold uppercase tracking-wider text-[#9b7863] dark:text-[#e09f67]">
                   Action Items & Deliverables
                 </span>
                 <div className="space-y-2.5">
@@ -186,23 +186,23 @@ ${notesData.openQuestions?.map(q => `- ${q}`).join('\n') || '- None'}
                         onClick={() => toggleTask(index)}
                         className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
                           isDone
-                            ? 'border-[#edf0e9] bg-[#f6f7f3] opacity-50'
-                            : 'border-[#ecece7] bg-[#fafaf8] hover:bg-[#f3f4ef]'
+                            ? 'border-[#edf0e9] bg-[#f6f7f3] opacity-50 dark:border-[#202636] dark:bg-[#141822]'
+                            : 'border-[#ecece7] bg-[#fafaf8] hover:bg-[#f3f4ef] dark:border-[#242b3b] dark:bg-[#1a1f2c] dark:hover:bg-[#202737]'
                         }`}
                       >
-                        <span className="mt-0.5 text-[#9b7863]">
+                        <span className="mt-0.5 text-[#9b7863] dark:text-[#e09f67]">
                           {isDone ? (
-                            <CheckSquare className="h-4 w-4 text-[#8aa767]" />
+                            <CheckSquare className="h-4 w-4 text-[#8aa767] dark:text-[#9bbc6d]" />
                           ) : (
-                            <Square className="h-4 w-4 text-[#a1a39c]" />
+                            <Square className="h-4 w-4 text-[#a1a39c] dark:text-[#6b7280]" />
                           )}
                         </span>
                         <div className="flex-1">
-                          <p className={`text-xs text-[#50534b] ${isDone ? 'line-through text-[#92958d]' : ''}`}>
+                          <p className={`text-xs text-[#50534b] dark:text-[#d1d5db] ${isDone ? 'line-through text-[#92958d] dark:text-[#6b7280]' : ''}`}>
                             {item.task}
                           </p>
                           <div className="flex items-center gap-2 mt-1.5">
-                            <span className="rounded-md bg-[#f5eee7] px-2 py-0.5 text-[10px] font-medium text-[#8d715c]">
+                            <span className="rounded-md bg-[#f5eee7] px-2 py-0.5 text-[10px] font-medium text-[#8d715c] dark:bg-[#342419] dark:text-[#f4a261]">
                               👤 {item.assignee || 'Unassigned'}
                             </span>
                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${getPriorityBadge(item.priority)}`}>
@@ -219,14 +219,14 @@ ${notesData.openQuestions?.map(q => `- ${q}`).join('\n') || '- None'}
 
             {/* 4. Open Questions */}
             {notesData.openQuestions && notesData.openQuestions.length > 0 && (
-              <div className="rounded-2xl border border-[#ecece7] bg-white p-4">
-                <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[#9a8051]">
+              <div className="rounded-2xl border border-[#ecece7] bg-white p-4 dark:border-[#202636] dark:bg-[#161a25]">
+                <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[#9a8051] dark:text-[#e0af55]">
                   Open Questions / Parking Lot
                 </span>
                 <ul className="space-y-2">
                   {notesData.openQuestions.map((q, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-[#50534b]">
-                      <HelpCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#a78c58]" />
+                    <li key={i} className="flex items-start gap-2 text-xs text-[#50534b] dark:text-[#d1d5db]">
+                      <HelpCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#a78c58] dark:text-[#e0af55]" />
                       <span>{q}</span>
                     </li>
                   ))}
@@ -239,20 +239,20 @@ ${notesData.openQuestions?.map(q => `- ${q}`).join('\n') || '- None'}
 
       {/* Bottom Export Bar */}
       {notesData && (
-        <div className="flex items-center gap-2 border-t border-[#ecece7] bg-white p-3">
+        <div className="flex items-center gap-2 border-t border-[#ecece7] bg-white p-3 dark:border-[#202636] dark:bg-[#151923]">
           <button
             type="button"
             onClick={handleCopyMarkdown}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f1f2ee] px-3 py-2.5 text-xs font-semibold text-[#4d5048] transition-all hover:bg-[#e8eae3] active:scale-95"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#f1f2ee] px-3 py-2.5 text-xs font-semibold text-[#4d5048] transition-all hover:bg-[#e8eae3] active:scale-95 dark:bg-[#202636] dark:text-[#e2e5eb] dark:hover:bg-[#293246]"
           >
-            {copied ? <Check className="h-3.5 w-3.5 text-[#809a5e]" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied ? <Check className="h-3.5 w-3.5 text-[#809a5e] dark:text-[#9bbc6d]" /> : <Copy className="h-3.5 w-3.5" />}
             <span>{copied ? 'Copied MD!' : 'Copy Markdown'}</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleDownloadFile('md')}
-            className="rounded-xl border border-[#e9e9e4] bg-white p-2.5 text-[#777a72] transition-all hover:bg-[#f3f4ef]"
+            className="rounded-xl border border-[#e9e9e4] bg-white p-2.5 text-[#777a72] transition-all hover:bg-[#f3f4ef] dark:border-[#242b3b] dark:bg-[#1a1f2c] dark:text-[#a0a6b5] dark:hover:bg-[#22293a]"
             title="Download as .md file"
           >
             <FileDown className="w-4 h-4" />
@@ -261,7 +261,7 @@ ${notesData.openQuestions?.map(q => `- ${q}`).join('\n') || '- None'}
           <button
             type="button"
             onClick={() => handleDownloadFile('json')}
-            className="rounded-xl bg-[#f1f2ee] p-2.5 text-xs font-mono text-[#686b63] transition-all hover:bg-[#e8eae3]"
+            className="rounded-xl bg-[#f1f2ee] p-2.5 text-xs font-mono text-[#686b63] transition-all hover:bg-[#e8eae3] dark:bg-[#202636] dark:text-[#a0a6b5] dark:hover:bg-[#293246]"
             title="Download JSON schema"
           >
             JSON

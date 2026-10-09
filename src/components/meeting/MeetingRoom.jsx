@@ -258,8 +258,10 @@ export function MeetingRoom({
                 aria-pressed={active}
                 title={label}
                 onClick={() => onToggleSidebar(id)}
-                className={`flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[11px] font-medium ${
-                  active ? 'bg-[#171815] text-white' : 'text-[#777a72] hover:bg-[#eff0eb]'
+                className={`flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[11px] font-medium transition-colors ${
+                  active
+                    ? 'bg-[#171815] text-white dark:bg-[#222838]'
+                    : 'text-[#777a72] hover:bg-[#eff0eb] dark:text-[#8d93a3] dark:hover:bg-[#1c2230] dark:hover:text-[#f3f4f6]'
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -271,7 +273,7 @@ export function MeetingRoom({
 
         {/* Center: video-first call stage */}
         <main
-          className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center bg-[#eff0ec] pb-20"
+          className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center bg-[#eff0ec] pb-20 dark:bg-[#090b10]"
         >
           <VideoGrid
             localUser={localUser}
@@ -286,7 +288,7 @@ export function MeetingRoom({
           />
 
           {displayParticipants.length === 0 && (
-            <div className="absolute left-1/2 top-4 z-10 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-xl border border-[#e5e7df] bg-white/90 px-4 py-2 text-center text-xs text-[#696c64] shadow-sm backdrop-blur">
+            <div className="absolute left-1/2 top-4 z-10 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-xl border border-[#e5e7df] bg-white/90 px-4 py-2 text-center text-xs text-[#696c64] shadow-sm backdrop-blur dark:border-[#222736] dark:bg-[#12151e]/90 dark:text-[#a0a6b5]">
               You’re the only participant in this call. Share the meeting link to invite others.
             </div>
           )}
@@ -303,7 +305,7 @@ export function MeetingRoom({
         <aside
           className={`${
             sidebarOpen ? 'flex' : 'hidden'
-          } z-20 mb-20 h-[38%] max-h-[40%] min-h-[190px] w-full shrink-0 flex-col border-t border-[#e7e8e3] bg-[#fbfbf8] transition-all duration-300 lg:mb-0 lg:h-full lg:max-h-none lg:min-h-0 lg:w-[340px] lg:border-l lg:border-t-0 xl:w-[360px]`}
+          } z-20 mb-20 h-[38%] max-h-[40%] min-h-[190px] w-full shrink-0 flex-col border-t border-[#e7e8e3] bg-[#fbfbf8] transition-all duration-300 lg:mb-0 lg:h-full lg:max-h-none lg:min-h-0 lg:w-[340px] lg:border-l lg:border-t-0 xl:w-[360px] dark:border-[#1e2330] dark:bg-[#12151e]`}
         >
           {activeSidebarTab === 'breakouts' ? (
             <BreakoutRoomsPanel

@@ -255,20 +255,20 @@ export function ControlDock({
 
       {/* Modern Leave Confirmation Modal */}
       {showLeaveConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#20211e]/35 p-4 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-sm rounded-3xl border border-white bg-[#fffefa] p-6 text-center text-[#34362f] shadow-[0_24px_70px_rgba(37,43,34,0.22)] md:p-8">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#f2d5ca] bg-[#fff0e8] text-[#c75f51]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#20211e]/35 p-4 backdrop-blur-sm animate-in fade-in duration-150 dark:bg-black/75">
+          <div className="w-full max-w-sm rounded-3xl border border-white bg-[#fffefa] p-6 text-center text-[#34362f] shadow-[0_24px_70px_rgba(37,43,34,0.22)] md:p-8 dark:border-[#222736] dark:bg-[#12151e] dark:text-[#f3f4f6] dark:shadow-2xl">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#f2d5ca] bg-[#fff0e8] text-[#c75f51] dark:border-[#4d2320] dark:bg-[#2a1413] dark:text-[#f87171]">
               <PhoneOff className="h-6 w-6" />
             </div>
-            <h3 className="mb-2 text-xl font-bold text-[#292b25]">Leave meeting?</h3>
-            <p className="mb-6 text-xs leading-relaxed text-[#777a72]">
+            <h3 className="mb-2 text-xl font-bold text-[#292b25] dark:text-[#f3f4f6]">Leave meeting?</h3>
+            <p className="mb-6 text-xs leading-relaxed text-[#777a72] dark:text-[#9ca3af]">
               Your transcript and generated AI notes are automatically synced to your persistent database records.
             </p>
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setShowLeaveConfirm(false)}
-                className="flex-1 rounded-2xl border border-[#e5e6df] bg-white py-3 text-xs font-semibold text-[#5e6058] transition-colors hover:bg-[#f4f5f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50"
+                className="flex-1 rounded-2xl border border-[#e5e6df] bg-white py-3 text-xs font-semibold text-[#5e6058] transition-colors hover:bg-[#f4f5f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50 dark:border-[#262c3c] dark:bg-[#181d28] dark:text-[#d1d5db] dark:hover:bg-[#202737]"
               >
                 Stay in Call
               </button>

@@ -93,7 +93,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Updated `.env.example` with Phase 3 configuration options.
   - Updated `docs/DECISIONS.md` with architectural records for observability, queues, and containerization.
 
-### UI/UX: Dark Mode Toggle & Adaptive Styling
+### UI/UX: Dark Mode Toggle & Comprehensive Adaptive Styling
 
 - **Added**:
   - `src/context/ThemeContext.jsx`: Zero-localStorage React context providing theme state and switching via `sessionStorage` (`syncmeet_theme`) and system preference (`prefers-color-scheme`), safely conforming to zero-localStorage policy.
@@ -102,9 +102,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Changed**:
   - `src/index.css`: Added adaptive theme transitions, dark color scheme, and dark-adapted glassmorphic scrollbars.
   - `src/App.jsx`: Wrapped application in `<ThemeProvider>`.
-  - `src/components/meeting/HeaderBar.jsx`: Integrated dark mode toggle pill in the meeting header.
-  - `src/components/lobby/DeviceSetup.jsx`: Added dark mode toggle pill to pre-join lobby header.
-  - `src/components/auth/UserMenu.jsx`: Added dark mode toggle switch into the user profile dropdown.
-  - `src/components/auth/LoginPage.jsx`: Added dark mode toggle to the login/signup screen.
-  - `src/components/meeting/MeetingRoom.jsx`: Styled participant panels and mobile navigation bars for dark mode compatibility.
-
+  - Comprehensive dark mode adaptation across all components preserving default light mode aesthetics:
+    - `src/components/lobby/DeviceSetup.jsx`: Welcome card, mode toggles, name & room code inputs, action buttons, device settings, feature cards, recent meetings list, and footer.
+    - `src/components/lobby/WaitingRoomScreen.jsx`: Full adaptive layout, header toggle, glass card, pulse indicators, and return buttons.
+    - `src/components/lobby/PermissionModal.jsx`: Adaptive permission instructions, dialog surfaces, and action button.
+    - `src/components/lobby/ScheduleMeetingModal.jsx`: Modal backdrop, dialog surface, form inputs, agenda item fields, and upcoming scheduled meetings list.
+    - `src/components/meeting/HeaderBar.jsx`: Integrated dark mode toggle pill in the meeting header with adaptive badge styles.
+    - `src/components/meeting/MeetingRoom.jsx`: Video-first stage background, left navigation, participant sidebar panel, tools card, and mobile navigation bar.
+    - `src/components/meeting/VideoTile.jsx`: Tile container, borders, participant avatar fallbacks, and action tool buttons.
+    - `src/components/meeting/ControlDock.jsx`: Leave meeting confirmation dialog, action button pills, and backdrop.
+    - `src/components/meeting/BreakoutRoomsPanel.jsx`: Small groups cards, duration/room count selectors, status badges, and action buttons.
+    - `src/components/meeting/HostControlsModal.jsx`: Mute all, lock room, and end meeting confirmation banner.
+    - `src/components/meeting/HostAdmitBanner.jsx`: Floating knocking admission requests banner with admit/deny action buttons.
+    - `src/components/meeting/WhiteboardPanel.jsx`: Whiteboard canvas header, toolbar buttons, color picker swatch, and canvas stage.
+    - `src/components/sidebar/SidebarContainer.jsx`: Navigation tabs, header container, and scroll areas.
+    - `src/components/sidebar/AINotesPanel.jsx`: Action bar, empty state, summary cards, action items with priority badges, and export buttons.
+    - `src/components/sidebar/LiveTranscript.jsx`: Live speech banners, message bubbles, and manual entry forms.
+    - `src/components/sidebar/RoomChat.jsx`: Chat message bubbles, sender labels, quick emoji bar, and text inputs.
+    - `src/components/sidebar/AIAssistantChat.jsx`: AI message cards, user bubbles, thinking animation state, quick prompt suggestions, and input form.
+    - `src/components/sidebar/AgendaPanel.jsx`: Agenda items list, status checkboxes, delete actions, and new item creation form.
+    - `src/components/sidebar/MeetingPollsPanel.jsx`: Live voting bars, poll creation forms, question upvote cards, and answer inputs.
+    - `src/components/history/MeetingHistoryModal.jsx`: Search inputs, meeting archives list, meeting detail view, tabs, and export actions.
+    - `src/components/auth/LoginPage.jsx`: Top-right toggle, authentication card, inputs, mode tabs, and guest join button.
+    - `src/components/auth/UserMenu.jsx`: Integrated dark mode toggle switch into the profile dropdown.
+    - `src/components/auth/UserProfileModal.jsx`: Light/dark adaptive modal surface, profile inputs, avatar color theme pickers, and save buttons.

@@ -48,19 +48,19 @@ export function SidebarContainer({
   const ActiveTabIcon = activeTabInfo?.icon;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[#fbfbf8] text-[#292b26] select-none">
+    <div className="flex h-full flex-col overflow-hidden bg-[#fbfbf8] text-[#292b26] select-none dark:bg-[#12151e] dark:text-[#f3f4f6]">
       {/* Tab Switcher Header */}
-      <div className="flex min-h-[54px] items-center justify-between gap-2 border-b border-[#e9eae5] bg-[#fbfbf8] px-3 py-2">
+      <div className="flex min-h-[54px] items-center justify-between gap-2 border-b border-[#e9eae5] bg-[#fbfbf8] px-3 py-2 dark:border-[#1e2330] dark:bg-[#12151e]">
         <div className="hidden min-w-0 items-center gap-2.5 px-1 lg:flex">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#f1f4e9] text-[#718b4f]">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#f1f4e9] text-[#718b4f] dark:bg-[#1e2a1b] dark:text-[#9bbc6d]">
             {ActiveTabIcon && <ActiveTabIcon className="h-4 w-4" />}
           </span>
-          <span className="truncate text-xs font-semibold text-[#34362f]">
+          <span className="truncate text-xs font-semibold text-[#34362f] dark:text-[#f3f4f6]">
             {activeTabInfo?.label || 'Meeting tools'}
           </span>
         </div>
 
-        <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-xl border border-[#ecece8] bg-[#f1f2ee] p-1 scrollbar-none lg:hidden">
+        <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-xl border border-[#ecece8] bg-[#f1f2ee] p-1 scrollbar-none lg:hidden dark:border-[#1e2330] dark:bg-[#181d28]">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -72,15 +72,15 @@ export function SidebarContainer({
                 aria-pressed={isActive}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                   isActive
-                    ? 'bg-[#171815] font-semibold text-white shadow-sm'
-                    : 'text-[#85887f] hover:bg-white hover:text-[#282a25]'
+                    ? 'bg-[#171815] font-semibold text-white shadow-sm dark:bg-[#222838]'
+                    : 'text-[#85887f] hover:bg-white hover:text-[#282a25] dark:text-[#8d93a3] dark:hover:bg-[#1e2434] dark:hover:text-[#f3f4f6]'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">{tab.label}</span>
                 {tab.badge && (
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
-                    isActive ? 'bg-white/15 text-white' : 'bg-[#e4e5df] text-[#777a72]'
+                    isActive ? 'bg-white/15 text-white' : 'bg-[#e4e5df] text-[#777a72] dark:bg-[#252c3c] dark:text-[#8d93a3]'
                   }`}>
                     {tab.badge}
                   </span>
@@ -94,7 +94,7 @@ export function SidebarContainer({
           type="button"
           onClick={onClose}
           aria-label="Close sidebar"
-          className="ml-1 rounded-xl p-2 text-[#85887f] transition-colors hover:bg-[#eeefeb] hover:text-[#282a25]"
+          className="ml-1 rounded-xl p-2 text-[#85887f] transition-colors hover:bg-[#eeefeb] hover:text-[#282a25] dark:text-[#8d93a3] dark:hover:bg-[#1c2230] dark:hover:text-[#f3f4f6]"
           title="Close sidebar"
         >
           <X className="w-4 h-4" />
@@ -139,7 +139,7 @@ export function SidebarContainer({
             activeTab === 'chat'
               ? 'h-full lg:h-[44%]'
               : activeTab === 'notes'
-                ? 'hidden lg:block lg:h-[44%] lg:border-t lg:border-[#e9eae5]'
+                ? 'hidden lg:block lg:h-[44%] lg:border-t lg:border-[#e9eae5] dark:lg:border-[#1e2330]'
                 : 'hidden'
           }`}>
             <RoomChat

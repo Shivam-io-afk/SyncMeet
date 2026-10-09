@@ -147,15 +147,15 @@ export function DeviceSetup({
   };
 
   const recentMeetingsPanel = (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-[#e8e9e3] bg-white shadow-[0_8px_26px_rgba(37,43,34,0.04)]">
-      <div className="flex items-center justify-between gap-2 border-b border-[#ecece6] px-4 py-3">
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-[#e8e9e3] bg-white shadow-[0_8px_26px_rgba(37,43,34,0.04)] dark:border-[#1e2330] dark:bg-[#12151e] dark:shadow-none">
+      <div className="flex items-center justify-between gap-2 border-b border-[#ecece6] px-4 py-3 dark:border-[#1e2330]">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#f1f4e9] text-[#80985c]">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#f1f4e9] text-[#80985c] dark:bg-[#1a251a] dark:text-[#a3c978]">
             <Clock3 className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <h2 className="truncate text-xs font-bold text-[#30322c]">Recent meetings</h2>
-            <p className="text-[10px] text-[#92948d]">
+            <h2 className="truncate text-xs font-bold text-[#30322c] dark:text-[#f3f4f6]">Recent meetings</h2>
+            <p className="text-[10px] text-[#92948d] dark:text-[#9ca3af]">
               {historySource === 'account' ? 'Your completed meetings' : 'Saved on this device'}
             </p>
           </div>
@@ -163,24 +163,24 @@ export function DeviceSetup({
         <button
           type="button"
           onClick={onOpenHistory}
-          className="inline-flex shrink-0 items-center gap-0.5 rounded-lg px-1.5 py-1 text-[10px] font-semibold text-[#718b4f] transition-colors hover:bg-[#f1f4e9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50"
+          className="inline-flex shrink-0 items-center gap-0.5 rounded-lg px-1.5 py-1 text-[10px] font-semibold text-[#718b4f] transition-colors hover:bg-[#f1f4e9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50 dark:text-[#a3c978] dark:hover:bg-[#1a251a]"
         >
           Archives <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </div>
-      <div className="min-h-0 flex-1 divide-y divide-[#eff0eb] overflow-y-auto">
+      <div className="min-h-0 flex-1 divide-y divide-[#eff0eb] overflow-y-auto dark:divide-[#1e2330]">
         {historyLoading ? (
-          <p className="px-4 py-5 text-center text-xs text-[#85877f]">Loading recent meetings…</p>
+          <p className="px-4 py-5 text-center text-xs text-[#85877f] dark:text-[#9ca3af]">Loading recent meetings…</p>
         ) : historyError ? (
-          <p role="status" className="px-4 py-5 text-center text-xs text-[#9a7440]">{historyError}</p>
+          <p role="status" className="px-4 py-5 text-center text-xs text-[#9a7440] dark:text-[#e0a055]">{historyError}</p>
         ) : recentMeetings.length ? (
           recentMeetings.map((meeting) => (
-            <div key={meeting.roomId} className="group flex items-center justify-between gap-2.5 px-3.5 py-3 transition-colors hover:bg-[#f8f9f5]">
+            <div key={meeting.roomId} className="group flex items-center justify-between gap-2.5 px-3.5 py-3 transition-colors hover:bg-[#f8f9f5] dark:hover:bg-[#181d28]">
               <div className="min-w-0">
-                <p className="truncate text-[11px] font-semibold text-[#3b3d36]">
+                <p className="truncate text-[11px] font-semibold text-[#3b3d36] dark:text-[#f3f4f6]">
                   {meeting.title || `Meeting ${meeting.roomId}`}
                 </p>
-                <p className="mt-1 flex min-w-0 items-center gap-1 text-[9px] text-[#92948d]">
+                <p className="mt-1 flex min-w-0 items-center gap-1 text-[9px] text-[#92948d] dark:text-[#9ca3af]">
                   <Database className="h-3 w-3 shrink-0 text-[#8aa767]" />
                   <span className="truncate font-mono">{meeting.roomId}</span>
                   <span>·</span>
@@ -197,7 +197,7 @@ export function DeviceSetup({
                 <button
                   type="button"
                   onClick={() => selectRecentRoom(meeting.roomId)}
-                  className="shrink-0 rounded-xl border border-[#e5e7df] bg-white px-2.5 py-1.5 text-[9px] font-semibold text-[#555850] transition-colors hover:border-[#cbd7b7] hover:bg-[#f1f4e9] hover:text-[#536a37] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50"
+                  className="shrink-0 rounded-xl border border-[#e5e7df] bg-white px-2.5 py-1.5 text-[9px] font-semibold text-[#555850] transition-colors hover:border-[#cbd7b7] hover:bg-[#f1f4e9] hover:text-[#536a37] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50 dark:border-[#222736] dark:bg-[#181d28] dark:text-[#d1d5db] dark:hover:border-[#384257] dark:hover:bg-[#202737] dark:hover:text-[#a3c978]"
                   title={`Use ${meeting.roomId} in Join with Code`}
                 >
                   Use code
@@ -207,8 +207,8 @@ export function DeviceSetup({
           ))
         ) : (
           <div className="px-4 py-6 text-center">
-            <p className="text-xs font-medium text-[#555850]">No recent meetings yet</p>
-            <p className="mt-1 text-[10px] text-[#92948d]">Your saved meeting rooms will appear here.</p>
+            <p className="text-xs font-medium text-[#555850] dark:text-[#d1d5db]">No recent meetings yet</p>
+            <p className="mt-1 text-[10px] text-[#92948d] dark:text-[#9ca3af]">Your saved meeting rooms will appear here.</p>
           </div>
         )}
       </div>
@@ -216,9 +216,9 @@ export function DeviceSetup({
   );
 
   const featureCards = [
-    { icon: Video, title: 'HD video', detail: 'Face-to-face, anywhere', tone: 'bg-[#eff4e7] text-[#799252]' },
-    { icon: Users, title: 'Easy to join', detail: 'Share one simple link', tone: 'bg-[#f4eee5] text-[#a2835b]' },
-    { icon: Sparkles, title: 'AI meeting notes', detail: 'Keep decisions in sync', tone: 'bg-[#f1eef8] text-[#8873ae]' },
+    { icon: Video, title: 'HD video', detail: 'Face-to-face, anywhere', tone: 'bg-[#eff4e7] text-[#799252] dark:bg-[#172215] dark:text-[#a3c978]' },
+    { icon: Users, title: 'Easy to join', detail: 'Share one simple link', tone: 'bg-[#f4eee5] text-[#a2835b] dark:bg-[#292218] dark:text-[#d9a86c]' },
+    { icon: Sparkles, title: 'AI meeting notes', detail: 'Keep decisions in sync', tone: 'bg-[#f1eef8] text-[#8873ae] dark:bg-[#221c30] dark:text-[#bca4e6]' },
   ];
 
   return (
@@ -300,33 +300,33 @@ export function DeviceSetup({
 
           <div className="grid min-h-0 flex-1 grid-cols-1 content-stretch gap-3 p-3 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(255px,0.78fr)_minmax(0,1.55fr)] lg:gap-4 lg:p-4 xl:grid-cols-[minmax(280px,0.82fr)_minmax(0,1.65fr)] xl:gap-5 xl:p-5 2xl:grid-cols-[minmax(290px,0.8fr)_minmax(0,1.55fr)_minmax(250px,0.78fr)]">
             <aside className="flex min-w-0 flex-col gap-3 sm:gap-4">
-              <section className="rounded-[22px] border border-[#e7e8e2] bg-white p-4 shadow-[0_8px_26px_rgba(37,43,34,0.045)] sm:p-5 xl:p-5">
+              <section className="rounded-[22px] border border-[#e7e8e2] bg-white p-4 shadow-[0_8px_26px_rgba(37,43,34,0.045)] sm:p-5 xl:p-5 dark:border-[#1e2330] dark:bg-[#12151e] dark:shadow-none">
                 <div className="mb-4 flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e6eadc] bg-[#f5f7ef] px-2.5 py-1 text-[10px] font-medium text-[#748b52]">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e6eadc] bg-[#f5f7ef] px-2.5 py-1 text-[10px] font-medium text-[#748b52] dark:border-[#263321] dark:bg-[#172215] dark:text-[#a3c978]">
                     <CalendarDays className="h-3.5 w-3.5" />
                     {new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[9px] font-medium uppercase tracking-[0.12em] text-[#a0a198]">
+                  <span className="inline-flex items-center gap-1 text-[9px] font-medium uppercase tracking-[0.12em] text-[#a0a198] dark:text-[#9ca3af]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#9bbc6d]" /> Get started
                   </span>
                 </div>
 
-                <h1 className="text-[22px] font-bold leading-tight tracking-tight text-[#292b25] sm:text-2xl">
+                <h1 className="text-[22px] font-bold leading-tight tracking-tight text-[#292b25] sm:text-2xl dark:text-[#f3f4f6]">
                   Welcome{userName.trim() ? `, ${userName.trim()}` : ' to SyncMeet'}
                 </h1>
-                <p className="mt-2 text-xs leading-relaxed text-[#777a72]">
+                <p className="mt-2 text-xs leading-relaxed text-[#777a72] dark:text-[#9ca3af]">
                   Start a high-definition meeting or join with a room code.
                 </p>
 
-                <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl border border-[#e8e9e3] bg-[#f3f4ef] p-1">
+                <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl border border-[#e8e9e3] bg-[#f3f4ef] p-1 dark:border-[#1e2330] dark:bg-[#161a24]">
                   <button
                     type="button"
                     onClick={() => { setIsCreatingNew(true); setNameError(''); }}
                     aria-pressed={isCreatingNew}
                     className={`rounded-lg px-2 py-2.5 text-[10px] font-semibold transition-all sm:text-[11px] ${
                       isCreatingNew
-                        ? 'bg-[#f6dfcc] text-[#805437] shadow-sm ring-1 ring-inset ring-[#e8c4a5]'
-                        : 'text-[#85877f] hover:text-[#34362f]'
+                        ? 'bg-[#f6dfcc] text-[#805437] shadow-sm ring-1 ring-inset ring-[#e8c4a5] dark:bg-[#2d241c] dark:text-[#e8a373] dark:ring-[#4d3625]'
+                        : 'text-[#85877f] hover:text-[#34362f] dark:text-[#9ca3af] dark:hover:text-[#f3f4f6]'
                     }`}
                   >
                     Create meeting
@@ -337,8 +337,8 @@ export function DeviceSetup({
                     aria-pressed={!isCreatingNew}
                     className={`rounded-lg px-2 py-2.5 text-[10px] font-semibold transition-all sm:text-[11px] ${
                       !isCreatingNew
-                        ? 'bg-[#f6dfcc] text-[#805437] shadow-sm ring-1 ring-inset ring-[#e8c4a5]'
-                        : 'text-[#85877f] hover:text-[#34362f]'
+                        ? 'bg-[#f6dfcc] text-[#805437] shadow-sm ring-1 ring-inset ring-[#e8c4a5] dark:bg-[#2d241c] dark:text-[#e8a373] dark:ring-[#4d3625]'
+                        : 'text-[#85877f] hover:text-[#34362f] dark:text-[#9ca3af] dark:hover:text-[#f3f4f6]'
                     }`}
                   >
                     Join with code
@@ -348,14 +348,14 @@ export function DeviceSetup({
                 <form onSubmit={handleJoin} className="mt-4 space-y-3.5">
                   <div>
                     <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                      <label htmlFor="meeting-display-name" className="text-[11px] font-semibold text-[#555850]">
+                      <label htmlFor="meeting-display-name" className="text-[11px] font-semibold text-[#555850] dark:text-[#d1d5db]">
                         Your Display Name <span className="text-[#d97868]">*</span>
                       </label>
                       {onOpenAuth && (
                         <button
                           type="button"
                           onClick={onOpenAuth}
-                          className="inline-flex items-center gap-1 rounded-full border border-[#e8e7f0] bg-[#f5f3fa] px-2 py-1 text-[9px] font-semibold text-[#77659e] transition-colors hover:bg-[#efebf7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b8bc0]/40"
+                          className="inline-flex items-center gap-1 rounded-full border border-[#e8e7f0] bg-[#f5f3fa] px-2 py-1 text-[9px] font-semibold text-[#77659e] transition-colors hover:bg-[#efebf7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b8bc0]/40 dark:border-[#28243d] dark:bg-[#1e1b2e] dark:text-[#b49be8] dark:hover:bg-[#28233d]"
                         >
                           <Sparkles className="h-3 w-3" />
                           Sign in / Switch
@@ -368,13 +368,13 @@ export function DeviceSetup({
                       placeholder="e.g. Sarah Jenkins"
                       value={userName}
                       onChange={(e) => { setUserName(e.target.value); setNameError(''); }}
-                      className="w-full rounded-xl border border-[#e1e3dc] bg-[#fbfbf8] px-3.5 py-2.5 text-xs text-[#34362f] placeholder:text-[#a1a39c] focus:border-[#9bbc6d] focus:outline-none focus:ring-2 focus:ring-[#9bbc6d]/20"
+                      className="w-full rounded-xl border border-[#e1e3dc] bg-[#fbfbf8] px-3.5 py-2.5 text-xs text-[#34362f] placeholder:text-[#a1a39c] focus:border-[#9bbc6d] focus:outline-none focus:ring-2 focus:ring-[#9bbc6d]/20 dark:border-[#222736] dark:bg-[#181d28] dark:text-[#f3f4f6] dark:placeholder:text-[#6b7280]"
                     />
                   </div>
 
                   {!isCreatingNew && (
                     <div>
-                      <label htmlFor="meeting-room-code" className="mb-1.5 block text-[11px] font-semibold text-[#555850]">
+                      <label htmlFor="meeting-room-code" className="mb-1.5 block text-[11px] font-semibold text-[#555850] dark:text-[#d1d5db]">
                         Meeting Room Code <span className="text-[#d97868]">*</span>
                       </label>
                       <input
@@ -383,13 +383,13 @@ export function DeviceSetup({
                         placeholder="e.g. room-sync-492"
                         value={roomId}
                         onChange={(e) => { setRoomId(e.target.value); setNameError(''); }}
-                        className="w-full rounded-xl border border-[#e1e3dc] bg-[#fbfbf8] px-3.5 py-2.5 font-mono text-xs text-[#34362f] placeholder:text-[#a1a39c] focus:border-[#9bbc6d] focus:outline-none focus:ring-2 focus:ring-[#9bbc6d]/20"
+                        className="w-full rounded-xl border border-[#e1e3dc] bg-[#fbfbf8] px-3.5 py-2.5 font-mono text-xs text-[#34362f] placeholder:text-[#a1a39c] focus:border-[#9bbc6d] focus:outline-none focus:ring-2 focus:ring-[#9bbc6d]/20 dark:border-[#222736] dark:bg-[#181d28] dark:text-[#f3f4f6] dark:placeholder:text-[#6b7280]"
                       />
                     </div>
                   )}
 
                   {nameError && (
-                    <p role="alert" className="rounded-lg border border-[#f1cbc3] bg-[#fff2ee] px-3 py-2 text-[10px] font-medium text-[#a8453c]">
+                    <p role="alert" className="rounded-lg border border-[#f1cbc3] bg-[#fff2ee] px-3 py-2 text-[10px] font-medium text-[#a8453c] dark:border-[#4d2320] dark:bg-[#2a1413] dark:text-[#f87171]">
                       {nameError}
                     </p>
                   )}
@@ -397,7 +397,7 @@ export function DeviceSetup({
                   <button
                     type="submit"
                   disabled={isJoining}
-                  className="group flex w-full items-center justify-center gap-2 rounded-xl bg-[#171815] px-4 py-3 text-[11px] font-semibold tracking-wide text-white shadow-[0_8px_20px_rgba(31,33,28,0.16)] transition-all hover:-translate-y-0.5 hover:bg-[#30322c] hover:shadow-[0_10px_24px_rgba(31,33,28,0.2)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/60 focus-visible:ring-offset-2"
+                  className="group flex w-full items-center justify-center gap-2 rounded-xl bg-[#171815] px-4 py-3 text-[11px] font-semibold tracking-wide text-white shadow-[0_8px_20px_rgba(31,33,28,0.16)] transition-all hover:-translate-y-0.5 hover:bg-[#30322c] hover:shadow-[0_10px_24px_rgba(31,33,28,0.2)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/60 focus-visible:ring-offset-2 dark:bg-[#9bbc6d] dark:text-[#12151e] dark:hover:bg-[#a9c97b]"
                   >
                   <span>{isJoining ? 'Joining…' : isCreatingNew ? 'Start meeting now' : 'Enter meeting room'}</span>
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -495,9 +495,9 @@ export function DeviceSetup({
               </section>
 
               {showSettings && (
-                <section className="grid grid-cols-1 gap-3 rounded-[20px] border border-[#e7e8e2] bg-white p-4 text-xs shadow-[0_8px_26px_rgba(37,43,34,0.04)] sm:grid-cols-2">
+                <section className="grid grid-cols-1 gap-3 rounded-[20px] border border-[#e7e8e2] bg-white p-4 text-xs shadow-[0_8px_26px_rgba(37,43,34,0.04)] sm:grid-cols-2 dark:border-[#1e2330] dark:bg-[#12151e] dark:shadow-none">
                   <div>
-                    <label htmlFor="audio-device" className="mb-1.5 flex items-center gap-1.5 font-medium text-[#6f7269]">
+                    <label htmlFor="audio-device" className="mb-1.5 flex items-center gap-1.5 font-medium text-[#6f7269] dark:text-[#d1d5db]">
                       <Headphones className="h-3.5 w-3.5 text-[#d97868]" />
                       Microphone
                     </label>
@@ -505,7 +505,7 @@ export function DeviceSetup({
                       id="audio-device"
                       value={mediaState.selectedAudioId}
                       onChange={(e) => mediaState.switchAudioDevice(e.target.value)}
-                      className="w-full rounded-xl border border-[#e1e3dc] bg-[#fbfbf8] px-3 py-2 text-[#4f514a] focus:border-[#9bbc6d] focus:outline-none focus:ring-2 focus:ring-[#9bbc6d]/20"
+                      className="w-full rounded-xl border border-[#e1e3dc] bg-[#fbfbf8] px-3 py-2 text-[#4f514a] focus:border-[#9bbc6d] focus:outline-none focus:ring-2 focus:ring-[#9bbc6d]/20 dark:border-[#222736] dark:bg-[#181d28] dark:text-[#f3f4f6]"
                     >
                       {mediaState.audioDevices.map((device) => (
                         <option key={device.deviceId} value={device.deviceId}>
@@ -515,7 +515,7 @@ export function DeviceSetup({
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="video-device" className="mb-1.5 flex items-center gap-1.5 font-medium text-[#6f7269]">
+                    <label htmlFor="video-device" className="mb-1.5 flex items-center gap-1.5 font-medium text-[#6f7269] dark:text-[#d1d5db]">
                       <Video className="h-3.5 w-3.5 text-[#80985c]" />
                       Camera
                     </label>
@@ -523,7 +523,7 @@ export function DeviceSetup({
                       id="video-device"
                       value={mediaState.selectedVideoId}
                       onChange={(e) => mediaState.switchVideoDevice(e.target.value)}
-                      className="w-full rounded-xl border border-[#e1e3dc] bg-[#fbfbf8] px-3 py-2 text-[#4f514a] focus:border-[#9bbc6d] focus:outline-none focus:ring-2 focus:ring-[#9bbc6d]/20"
+                      className="w-full rounded-xl border border-[#e1e3dc] bg-[#fbfbf8] px-3 py-2 text-[#4f514a] focus:border-[#9bbc6d] focus:outline-none focus:ring-2 focus:ring-[#9bbc6d]/20 dark:border-[#222736] dark:bg-[#181d28] dark:text-[#f3f4f6]"
                     >
                       {mediaState.videoDevices.map((device) => (
                         <option key={device.deviceId} value={device.deviceId}>
@@ -539,41 +539,41 @@ export function DeviceSetup({
                 {featureCards.map(({ icon: Icon, title, detail, tone }) => (
                   <div
                     key={title}
-                    className="group min-w-0 rounded-[18px] border border-[#e8e9e3] bg-white p-3 shadow-[0_6px_18px_rgba(37,43,34,0.035)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(37,43,34,0.08)] sm:rounded-[20px] sm:p-4"
+                    className="group min-w-0 rounded-[18px] border border-[#e8e9e3] bg-white p-3 shadow-[0_6px_18px_rgba(37,43,34,0.035)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(37,43,34,0.08)] sm:rounded-[20px] sm:p-4 dark:border-[#1e2330] dark:bg-[#12151e] dark:shadow-none"
                   >
                     <span className={`mb-2.5 flex h-8 w-8 items-center justify-center rounded-xl ${tone} transition-transform group-hover:scale-105`}>
                       <Icon className="h-4 w-4" />
                     </span>
-                    <p className="truncate text-[10px] font-semibold text-[#3b3d36] sm:text-xs">{title}</p>
-                    <p className="mt-1 hidden text-[10px] text-[#92948d] sm:block">{detail}</p>
+                    <p className="truncate text-[10px] font-semibold text-[#3b3d36] sm:text-xs dark:text-[#f3f4f6]">{title}</p>
+                    <p className="mt-1 hidden text-[10px] text-[#92948d] sm:block dark:text-[#9ca3af]">{detail}</p>
                   </div>
                 ))}
               </section>
             </main>
 
             <aside className="hidden min-w-0 flex-col gap-3 2xl:flex">
-              <section className="rounded-[22px] border border-[#e8e9e3] bg-white p-4 shadow-[0_8px_26px_rgba(37,43,34,0.04)]">
+              <section className="rounded-[22px] border border-[#e8e9e3] bg-white p-4 shadow-[0_8px_26px_rgba(37,43,34,0.04)] dark:border-[#1e2330] dark:bg-[#12151e] dark:shadow-none">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#f1eef8] text-[#8873ae]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#f1eef8] text-[#8873ae] dark:bg-[#221c30] dark:text-[#bca4e6]">
                       <Sparkles className="h-4 w-4" />
                     </span>
-                    <h2 className="text-xs font-bold text-[#30322c]">Quick overview</h2>
+                    <h2 className="text-xs font-bold text-[#30322c] dark:text-[#f3f4f6]">Quick overview</h2>
                   </div>
                   <ShieldCheck className="h-4 w-4 text-[#91a76d]" />
                 </div>
-                <p className="text-[11px] leading-relaxed text-[#777a72]">
+                <p className="text-[11px] leading-relaxed text-[#777a72] dark:text-[#9ca3af]">
                   Start a private room or enter a code to join your team. Your camera and microphone stay under your control.
                 </p>
-                <div className="mt-3 space-y-2 border-t border-[#eff0eb] pt-3">
-                  <div className="flex items-center gap-2 text-[10px] text-[#62655d]">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#eff4e7] text-[#799252]">
+                <div className="mt-3 space-y-2 border-t border-[#eff0eb] pt-3 dark:border-[#1e2330]">
+                  <div className="flex items-center gap-2 text-[10px] text-[#62655d] dark:text-[#d1d5db]">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#eff4e7] text-[#799252] dark:bg-[#172215] dark:text-[#a3c978]">
                       <Video className="h-3 w-3" />
                     </span>
                     HD video preview
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] text-[#62655d]">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#f1eef8] text-[#8873ae]">
+                  <div className="flex items-center gap-2 text-[10px] text-[#62655d] dark:text-[#d1d5db]">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#f1eef8] text-[#8873ae] dark:bg-[#221c30] dark:text-[#bca4e6]">
                       <Sparkles className="h-3 w-3" />
                     </span>
                     AI notes in meetings
@@ -585,12 +585,12 @@ export function DeviceSetup({
           </div>
         </div>
 
-        <footer className="relative z-10 hidden shrink-0 items-center justify-between border-t border-[#e8e9e5] bg-[#fbfbf8] px-5 py-2 text-[9px] text-[#a0a198] sm:flex">
+        <footer className="relative z-10 hidden shrink-0 items-center justify-between border-t border-[#e8e9e5] bg-[#fbfbf8] px-5 py-2 text-[9px] text-[#a0a198] sm:flex dark:border-[#1e2330] dark:bg-[#12151e] dark:text-[#9ca3af]">
           <span>SyncMeet · Your meetings stay in your control</span>
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-[#9bbc6d]" />
             {mediaState.isVideoDisabled ? 'Camera off' : hasVideoTrack ? 'Camera ready' : 'Camera unavailable'}
-            <span className="mx-1 text-[#d3d4ce]">·</span>
+            <span className="mx-1 text-[#d3d4ce] dark:text-[#374151]">·</span>
             {mediaState.isAudioMuted ? 'Microphone muted' : 'Microphone ready'}
           </span>
         </footer>

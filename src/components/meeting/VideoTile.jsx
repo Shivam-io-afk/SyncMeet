@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { 
-  Mic, MicOff, Pin, Sparkle, Maximize2, Volume2, Monitor, Hand 
+  MicOff, Pin, Sparkle, Maximize2, Volume2, Monitor, Hand 
 } from 'lucide-react';
 import { AudioVisualizer } from '../ui/AudioVisualizer';
 
@@ -77,10 +77,10 @@ export function VideoTile({
 
   return (
     <div
-      className={`group relative flex h-full w-full select-none items-center justify-center overflow-hidden rounded-[20px] bg-[#d8dad4] shadow-[0_8px_24px_rgba(51,55,44,0.12)] transition-all duration-300 md:rounded-[24px] ${
+      className={`group relative flex h-full w-full select-none items-center justify-center overflow-hidden rounded-[20px] bg-[#d8dad4] shadow-[0_8px_24px_rgba(51,55,44,0.12)] transition-all duration-300 md:rounded-[24px] dark:bg-[#161a25] dark:shadow-none ${
         isHighlighted
           ? 'ring-2 ring-[#b9d88d] shadow-[0_0_0_3px_rgba(185,216,141,0.18)]'
-          : 'border border-white/80 hover:border-[#c9d6b3]'
+          : 'border border-white/80 hover:border-[#c9d6b3] dark:border-white/10 dark:hover:border-[#9bbc6d]/40'
       } ${className}`}
     >
       {/* Video Stream Element */}
@@ -100,17 +100,17 @@ export function VideoTile({
         </div>
       ) : (
         /* Video Off Avatar State */
-        <div className="flex h-full w-full select-none flex-col items-center justify-center bg-gradient-to-br from-[#eaebe6] to-[#d9dcd4] text-[#656960]">
+        <div className="flex h-full w-full select-none flex-col items-center justify-center bg-gradient-to-br from-[#eaebe6] to-[#d9dcd4] text-[#656960] dark:from-[#1c2230] dark:to-[#12151e] dark:text-[#9ca3af]">
           <div className="relative">
             {participant.avatar ? (
               <img
                 src={participant.avatar}
                 alt={participant.name}
-                className="h-20 w-20 rounded-full object-cover shadow-xl ring-4 ring-white/80 transition-all group-hover:ring-white md:h-24 md:w-24"
+                className="h-20 w-20 rounded-full object-cover shadow-xl ring-4 ring-white/80 transition-all group-hover:ring-white md:h-24 md:w-24 dark:ring-white/20 dark:group-hover:ring-white/40"
               />
             ) : (
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-tr from-[#c4de9b] to-[#e6a790] p-0.5 shadow-xl md:h-24 md:w-24">
-                <div className="flex h-full w-full items-center justify-center rounded-full bg-[#f8f8f5] text-xl font-bold tracking-wide text-[#393c33] md:text-2xl">
+                <div className="flex h-full w-full items-center justify-center rounded-full bg-[#f8f8f5] text-xl font-bold tracking-wide text-[#393c33] md:text-2xl dark:bg-[#181d28] dark:text-[#f3f4f6]">
                   {participant.name ? participant.name.charAt(0).toUpperCase() : 'U'}
                 </div>
               </div>
