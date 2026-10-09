@@ -14,6 +14,13 @@ This document records architectural decisions, technical justifications, and dep
 | `mongodb-memory-server` | pinned  | `devDependencies` | In-memory MongoDB instance for fast, isolated, deterministic database integration tests without external network dependencies. |
 | `@playwright/test`      | pinned  | `devDependencies` | Cross-browser multi-context end-to-end automation for verifying host/participant real-time WebRTC and UI lifecycles.           |
 
+## Phase 1: Core Bug & Real-Time Presence Dependencies
+
+| Package                    | Version | Type           | One-Line Justification                                                                                               |
+| :------------------------- | :------ | :------------- | :------------------------------------------------------------------------------------------------------------------- |
+| `ioredis`                  | `6.0.0` | `dependencies` | High-performance Redis client for real-time presence caching, host lease management, and reconnection grace windows. |
+| `@socket.io/redis-adapter` | `8.3.0` | `dependencies` | Socket.IO adapter enabling horizontal multi-instance pub/sub and synchronized room broadcasts across server nodes.   |
+
 ---
 
 ## Architectural Principles & Rules
