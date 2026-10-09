@@ -5,7 +5,8 @@ import { isDbConnected } from '../config/db.js';
 import { optionalProtect, protect } from '../middleware/authMiddleware.js';
 import { issueRoomAccessToken, requireRoomAccess } from '../middleware/roomAccessMiddleware.js';
 import { ScheduledMeeting } from '../models/ScheduledMeeting.js';
-import { inMemoryRooms, scheduledMeetings } from '../store/memoryMeetingStore.js';
+import { BreakoutSession } from '../models/BreakoutSession.js';
+import { inMemoryRooms, scheduledMeetings, breakoutSessions } from '../store/memoryMeetingStore.js';
 
 const router = express.Router();
 
@@ -137,7 +138,11 @@ router.post('/:roomId/join', optionalProtect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Meeting room not found or no longer active' });
     }
     const isHost = Boolean(req.user && room?.hostId && String(req.user.id || req.user._id) === String(room.hostId));
-    const participantId = isHost ? String(req.user.id || req.user._id) : `guest-${randomUUID()}`;
+    const userId = req.user ? String(req.user.id || req.user._id) : null;
+    const participantId = userId
+      || (typeof req.body?.participantId === 'string' && req.body.participantId.trim()
+        ? req.body.participantId.trim()
+        : `guest-${randomUUID()}`);
     const role = isHost ? 'host' : 'participant';
     const accessToken = issueRoomAccessToken({
       roomId,
@@ -156,6 +161,74 @@ router.post('/:roomId/join', optionalProtect, async (req, res) => {
   } catch (error) {
     console.error('Join room error:', error);
     return res.status(500).json({ success: false, message: 'Could not join meeting room' });
+  }
+});
+
+// @route   GET /api/rooms/:roomId/state
+// @desc    Get complete authoritative room state for rehydration on reload/rejoin
+// @access  Protected by room access token
+router.get('/:roomId/state', requireRoomAccess, async (req, res) => {
+  const { roomId } = req.params;
+  const access = req.roomAccess;
+
+  try {
+    let room = null;
+    if (isDbConnected()) {
+      room = await Room.findOne({ roomId, isActive: true })
+        .select('roomId title hostId hostName isLocked settings agenda isActive createdAt participants')
+        .lean();
+    } else {
+      room = inMemoryRooms.get(roomId);
+    }
+
+    if (!room || room.isActive === false) {
+      return res.status(404).json({ success: false, message: 'Meeting room is inactive or not found' });
+    }
+
+    let activeBreakout = null;
+    if (isDbConnected()) {
+      activeBreakout = await BreakoutSession.findOne({ roomId, status: 'active' }).lean();
+    } else {
+      activeBreakout = (breakoutSessions.get(roomId) || []).find((b) => b.status === 'active');
+    }
+
+    return res.json({
+      success: true,
+      state: {
+        roomId: room.roomId,
+        title: room.title,
+        hostId: room.hostId,
+        hostName: room.hostName,
+        isLocked: Boolean(room.isLocked),
+        isActive: true,
+        createdAt: room.createdAt,
+        agenda: room.agenda || [],
+        settings: room.settings || {},
+        participants: (room.participants || []).map((p) => ({
+          userId: String(p.userId),
+          name: p.name,
+          role: String(p.userId) === String(room.hostId) ? 'host' : 'participant',
+          isMuted: Boolean(p.isMuted),
+          isVideoOff: Boolean(p.isVideoOff),
+          joinedAt: p.joinedAt,
+          isDisconnected: Boolean(p.isDisconnected),
+        })),
+        caller: {
+          participantId: access.participantId,
+          role: access.role,
+          isHost: access.role === 'host',
+          displayName: access.displayName,
+        },
+        activeBreakout: activeBreakout ? {
+          id: activeBreakout.id,
+          groups: activeBreakout.groups,
+          endsAt: activeBreakout.endsAt,
+        } : null,
+      },
+    });
+  } catch (error) {
+    console.error('Get room state error:', error);
+    return res.status(500).json({ success: false, message: 'Server error retrieving room state' });
   }
 });
 
