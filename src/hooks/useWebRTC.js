@@ -324,8 +324,48 @@ export function useWebRTC(localStream, session) {
         : peer));
     };
 
+    // User Reconnected (rejoin after reload or network blip)
+    const handleUserReconnected = ({ oldSocketId, newSocketId, user }) => {
+      console.log('🔄 [WebRTC] User reconnected:', user?.name || newSocketId);
+      const oldPc = peerConnections.current.get(oldSocketId);
+      if (oldPc) {
+        oldPc.close();
+        peerConnections.current.delete(oldSocketId);
+      }
+      const restartState = iceRestartStates.current.get(oldSocketId);
+      if (restartState?.timer) clearTimeout(restartState.timer);
+      if (restartState?.retryTimer) clearTimeout(restartState.retryTimer);
+      iceRestartStates.current.delete(oldSocketId);
+      pendingIceCandidates.current.delete(oldSocketId);
+      const oldStream = remoteStreams.current.get(oldSocketId);
+      remoteStreams.current.delete(oldSocketId);
+      if (oldStream) remoteStreams.current.set(newSocketId, oldStream);
+
+      setRemotePeers((prev) => {
+        const existing = prev.find((p) => p.socketId === oldSocketId || (user?.id && p.user?.id === user.id));
+        const filtered = prev.filter((p) => p.socketId !== oldSocketId && (!user?.id || p.user?.id !== user.id));
+        return [
+          ...filtered,
+          {
+            socketId: newSocketId,
+            user: user || existing?.user || { name: 'Participant' },
+            stream: existing?.stream || oldStream || null,
+            isMuted: existing ? existing.isMuted : Boolean(user?.isMuted),
+            isVideoOff: existing ? existing.isVideoOff : Boolean(user?.isVideoOff),
+            isHandRaised: existing ? existing.isHandRaised : false,
+          },
+        ];
+      });
+
+      createPeerConnection(newSocketId, user);
+      if (shouldInitiateOffer(newSocketId)) {
+        void startPeerOffer(newSocketId, user);
+      }
+    };
+
     socketService.on('room-peers', handleRoomPeers);
     socketService.on('user-joined', handleUserJoined);
+    socketService.on('user-reconnected', handleUserReconnected);
     socketService.on('webrtc-offer', handleOffer);
     socketService.on('webrtc-answer', handleAnswer);
     socketService.on('webrtc-ice-candidate', handleIceCandidate);
@@ -336,6 +376,7 @@ export function useWebRTC(localStream, session) {
     return () => {
       socketService.off('room-peers', handleRoomPeers);
       socketService.off('user-joined', handleUserJoined);
+      socketService.off('user-reconnected', handleUserReconnected);
       socketService.off('webrtc-offer', handleOffer);
       socketService.off('webrtc-answer', handleAnswer);
       socketService.off('webrtc-ice-candidate', handleIceCandidate);

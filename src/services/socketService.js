@@ -83,6 +83,9 @@ class SocketService {
 
   leaveRoom() {
     if (this.socket) {
+      if (this.socket.connected) {
+        this.socket.emit('leave-room');
+      }
       this.socket.disconnect();
       this.socket = null;
       this.roomId = null;

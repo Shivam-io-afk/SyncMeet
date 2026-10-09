@@ -139,6 +139,43 @@ export default function App() {
     }));
   }, [session]);
 
+  // On mount with restored meeting session, rehydrate authoritative state from backend
+  useEffect(() => {
+    const saved = getSavedMeetingSession();
+    if (!saved?.roomId) return;
+
+    let isCurrent = true;
+    apiService.getRoomState(saved.roomId).then((res) => {
+      if (!isCurrent) return;
+      if (res?.success && res?.state) {
+        setIsRoomLocked(Boolean(res.state.isLocked));
+        setSession((prev) => {
+          if (!prev || prev.roomId !== res.state.roomId) return prev;
+          return {
+            ...prev,
+            title: res.state.title || prev.title,
+            agenda: res.state.agenda || prev.agenda,
+            isHost: res.state.caller?.isHost ?? prev.isHost,
+            role: res.state.caller?.role ?? prev.role,
+          };
+        });
+      } else {
+        sessionStorage.removeItem(ACTIVE_MEETING_KEY);
+        apiService.clearActiveRoomAccess();
+        setSession(null);
+      }
+    }).catch((err) => {
+      console.warn('Could not rehydrate room state on mount:', err.message);
+      if (err.message?.includes('inactive') || err.message?.includes('not found') || err.message?.includes('404')) {
+        sessionStorage.removeItem(ACTIVE_MEETING_KEY);
+        apiService.clearActiveRoomAccess();
+        setSession(null);
+      }
+    });
+
+    return () => { isCurrent = false; };
+  }, []);
+
   // 6. Hardware Media Devices Hook
   const mediaState = useMediaDevices();
   const mediaStateRef = useRef(mediaState);

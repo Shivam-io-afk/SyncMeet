@@ -47,7 +47,7 @@ export function MeetingRoom({
 
   const { remotePeers } = useWebRTC(outboundMediaStream, session);
   const displayParticipants = remotePeers.map((peer) => ({
-    id: peer.socketId,
+    id: peer.user?.id || peer.socketId,
     name: peer.user?.name || 'Participant',
     stream: peer.stream,
     isMuted: peer.isMuted,

@@ -271,6 +271,10 @@ class ApiService {
     return await this.request(`/api/rooms/${roomId}`, { method: 'GET' });
   }
 
+  async getRoomState(roomId) {
+    return await this.request(`/api/rooms/${encodeURIComponent(roomId)}/state`, { method: 'GET' });
+  }
+
   // --- AI API ---
   async summarizeTranscripts(roomId, transcripts) {
     if (!roomId) throw new Error('A room ID is required to summarize meeting transcripts');
