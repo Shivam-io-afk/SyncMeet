@@ -19,3 +19,6 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Temporary Phase tests
+.phase1-tests/
