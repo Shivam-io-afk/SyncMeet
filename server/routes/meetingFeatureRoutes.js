@@ -149,7 +149,7 @@ router.get('/schedules', async (_req, res) => {
           && new Date(meeting.startsAt) >= new Date()
         ))
         .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
-    return res.json({ success: true, meetings: meetings.map(({ invitees, createdBy, ...meeting }) => meeting) });
+    return res.json({ success: true, meetings: meetings.map(({ invitees: _invitees, createdBy: _createdBy, ...meeting }) => meeting) });
   } catch (error) {
     console.error('List scheduled meetings error:', error);
     return res.status(500).json({ success: false, message: 'Could not load scheduled meetings' });
@@ -164,7 +164,7 @@ router.get('/schedules/:roomId', async (req, res) => {
       : scheduledMeetings.get(req.params.roomId) || null;
     if (!meeting) return res.status(404).json({ success: false, message: 'Scheduled meeting not found' });
     const sendMeeting = () => {
-      const { invitees, createdBy, ...publicMeeting } = meeting;
+      const { invitees: _invitees, createdBy: _createdBy, ...publicMeeting } = meeting;
       return res.json({ success: true, meeting: publicMeeting });
     };
     if (meeting.invitees?.length) {
@@ -235,7 +235,7 @@ router.post('/schedules', optionalProtect, async (req, res) => {
         || (typeof req.body?.hostName === 'string' ? req.body.hostName.slice(0, 120) : 'Meeting Host'),
       ...(req.user ? { accountId: hostId } : {}),
     });
-    const { invitees, ...publicMeeting } = saved.toObject ? saved.toObject() : saved;
+    const { invitees: _invitees, ...publicMeeting } = saved.toObject ? saved.toObject() : saved;
     return res.status(201).json({ success: true, meeting: publicMeeting, accessToken });
   } catch (error) {
     console.error('Create scheduled meeting error:', error);
@@ -460,6 +460,25 @@ router.patch('/rooms/:roomId/polls/:pollId/close', requireRoomHost, async (req, 
   }
 });
 
+router.delete('/rooms/:roomId/polls/:pollId', requireRoomHost, async (req, res) => {
+  const { roomId, pollId } = req.params;
+  try {
+    if (isDbConnected()) {
+      const result = await MeetingPoll.deleteOne({ id: pollId, roomId });
+      if (result.deletedCount === 0) return res.status(404).json({ success: false, message: 'Poll not found' });
+    } else {
+      const list = roomPolls.get(roomId) || [];
+      const index = list.findIndex((p) => p.id === pollId);
+      if (index === -1) return res.status(404).json({ success: false, message: 'Poll not found' });
+      list.splice(index, 1);
+    }
+    return res.json({ success: true, message: 'Poll deleted' });
+  } catch (error) {
+    console.error('Delete poll error:', error);
+    return res.status(500).json({ success: false, message: 'Could not delete poll' });
+  }
+});
+
 router.get('/rooms/:roomId/questions', async (req, res) => {
   try {
     const questions = isDbConnected()
@@ -523,6 +542,34 @@ router.patch('/rooms/:roomId/questions/:questionId/answer', requireRoomHost, asy
   } catch (error) {
     console.error('Mark meeting question answered error:', error);
     return res.status(500).json({ success: false, message: 'Could not update question status' });
+  }
+});
+
+router.delete('/rooms/:roomId/questions/:questionId', async (req, res) => {
+  const { roomId, questionId } = req.params;
+  const participantId = req.roomAccess.participantId;
+  const isHost = req.roomAccess.role === 'host';
+  try {
+    if (isDbConnected()) {
+      const question = await MeetingQuestion.findOne({ id: questionId, roomId });
+      if (!question) return res.status(404).json({ success: false, message: 'Question not found' });
+      if (!isHost && question.authorId !== participantId) {
+        return res.status(403).json({ success: false, message: 'Only the author or host can delete this question' });
+      }
+      await MeetingQuestion.deleteOne({ id: questionId, roomId });
+    } else {
+      const list = roomQuestions.get(roomId) || [];
+      const index = list.findIndex((q) => q.id === questionId);
+      if (index === -1) return res.status(404).json({ success: false, message: 'Question not found' });
+      if (!isHost && list[index].authorId !== participantId) {
+        return res.status(403).json({ success: false, message: 'Only the author or host can delete this question' });
+      }
+      list.splice(index, 1);
+    }
+    return res.json({ success: true, message: 'Question deleted' });
+  } catch (error) {
+    console.error('Delete meeting question error:', error);
+    return res.status(500).json({ success: false, message: 'Could not delete question' });
   }
 });
 

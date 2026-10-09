@@ -15,6 +15,8 @@ import roomRoutes from './routes/roomRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import historyRoutes from './routes/historyRoutes.js';
 import meetingFeatureRoutes from './routes/meetingFeatureRoutes.js';
+import { createAdapter } from '@socket.io/redis-adapter';
+import { getRedisClient, getRedisSubscriber } from './store/memoryMeetingStore.js';
 import { setupSocketHandlers } from './socket/socketHandler.js';
 
 dotenv.config();
@@ -50,6 +52,13 @@ const io = new Server(server, {
     credentials: true,
   },
 });
+
+const pubClient = getRedisClient();
+const subClient = getRedisSubscriber();
+if (pubClient && subClient) {
+  io.adapter(createAdapter(pubClient, subClient));
+  console.log('⚡ [Socket.io] Redis adapter attached for multi-instance pub/sub');
+}
 
 // Middlewares
 app.disable('x-powered-by');

@@ -33,8 +33,12 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
   const pendingDisconnects = new Map();
   const removePendingKnock = (roomId, socketId) => {
     const requests = pendingKnocks.get(roomId);
-    requests?.delete(socketId);
-    if (requests?.size === 0) pendingKnocks.delete(roomId);
+    if (requests) {
+      const entry = requests.get ? requests.get(socketId) : null;
+      if (entry?.timer) clearTimeout(entry.timer);
+      requests.delete(socketId);
+      if (requests.size === 0) pendingKnocks.delete(roomId);
+    }
   };
   const readSocketPayload = (payload) => (
     payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {}
@@ -209,8 +213,17 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
         role: access.role,
       };
       socket.knockingRoomId = roomId;
-      const roomKnocks = pendingKnocks.get(roomId) || new Set();
-      roomKnocks.add(socket.id);
+      removePendingKnock(roomId, socket.id);
+      const roomKnocks = pendingKnocks.get(roomId) || new Map();
+      const knockTimer = setTimeout(() => {
+        removePendingKnock(roomId, socket.id);
+        socket.emit('knock-response', {
+          approved: false,
+          message: 'Your admission request timed out waiting for the host.',
+        });
+      }, 300_000);
+      knockTimer.unref();
+      roomKnocks.set(socket.id, { timer: knockTimer, user: socket.user });
       pendingKnocks.set(roomId, roomKnocks);
 
       socket.to(roomId).emit('knock-request', {
@@ -679,6 +692,24 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
       }
     });
 
+    socket.on('meeting-question-deleted', (payload) => {
+      const parentRoomId = socket.parentRoomId;
+      if (!parentRoomId || !rooms.get(socket.roomId)?.has(socket.id)) return;
+      const { questionId } = readSocketPayload(payload);
+      if (typeof questionId === 'string' && questionId.trim()) {
+        emitToMeeting(parentRoomId, 'meeting-question-deleted', { questionId: questionId.trim() });
+      }
+    });
+
+    socket.on('meeting-poll-deleted', (payload) => {
+      const parentRoomId = socket.parentRoomId;
+      if (!parentRoomId || !rooms.get(socket.roomId)?.has(socket.id)) return;
+      const { pollId } = readSocketPayload(payload);
+      if (typeof pollId === 'string' && pollId.trim()) {
+        emitToMeeting(parentRoomId, 'meeting-poll-deleted', { pollId: pollId.trim() });
+      }
+    });
+
     socket.on('meeting-agenda-updated', async () => {
       const parentRoomId = socket.parentRoomId;
       if (!parentRoomId || !rooms.get(socket.roomId)?.has(socket.id)) return;
@@ -1094,6 +1125,7 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
               }
             }
           }, disconnectGracePeriodMs);
+          timer.unref();
 
           pendingDisconnects.set(graceKey, {
             timer,
