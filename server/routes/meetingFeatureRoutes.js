@@ -18,6 +18,8 @@ import {
   roomQuestions,
   scheduledMeetings,
 } from '../store/memoryMeetingStore.js';
+import { enqueueEmailReminderJob } from '../queues/meetingQueue.js';
+import { logger } from '../utils/logger.js';
 
 const router = express.Router();
 const roomNotes = new Map();
@@ -235,6 +237,16 @@ router.post('/schedules', optionalProtect, async (req, res) => {
         || (typeof req.body?.hostName === 'string' ? req.body.hostName.slice(0, 120) : 'Meeting Host'),
       ...(req.user ? { accountId: hostId } : {}),
     });
+    if (Array.isArray(meeting.invitees) && meeting.invitees.length > 0) {
+      for (const invitee of meeting.invitees) {
+        enqueueEmailReminderJob({
+          email: invitee,
+          meetingTitle: meeting.title,
+          scheduledTime: meeting.scheduledFor,
+          roomId,
+        }).catch((err) => logger.warn({ err: err.message, invitee }, 'Failed to enqueue reminder email'));
+      }
+    }
     const { invitees: _invitees, ...publicMeeting } = saved.toObject ? saved.toObject() : saved;
     return res.status(201).json({ success: true, meeting: publicMeeting, accessToken });
   } catch (error) {

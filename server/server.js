@@ -18,8 +18,14 @@ import meetingFeatureRoutes from './routes/meetingFeatureRoutes.js';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { getRedisClient, getRedisSubscriber } from './store/memoryMeetingStore.js';
 import { setupSocketHandlers } from './socket/socketHandler.js';
+import { logger, httpLogger } from './utils/logger.js';
+import { initSentry, captureException } from './config/sentry.js';
+import { initializeQueue, closeQueues } from './queues/meetingQueue.js';
 
 dotenv.config();
+initSentry();
+initializeQueue();
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,11 +63,12 @@ const pubClient = getRedisClient();
 const subClient = getRedisSubscriber();
 if (pubClient && subClient) {
   io.adapter(createAdapter(pubClient, subClient));
-  console.log('⚡ [Socket.io] Redis adapter attached for multi-instance pub/sub');
+  logger.info('⚡ [Socket.io] Redis adapter attached for multi-instance pub/sub');
 }
 
 // Middlewares
 app.disable('x-powered-by');
+app.use(httpLogger);
 app.use(helmet({
   crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
 }));
@@ -109,19 +116,22 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/features', meetingFeatureRoutes);
 
-app.use((error, _req, res, next) => {
+app.use((error, req, res, next) => {
   if (res.headersSent) return next(error);
+  captureException(error, { path: req.path, method: req.method, reqId: req.id });
   if (error.type === 'entity.too.large') {
     return res.status(413).json({ success: false, message: 'Request body exceeds the 2MB limit' });
   }
   if (error.type === 'entity.parse.failed') {
     return res.status(400).json({ success: false, message: 'Request body must contain valid JSON' });
   }
-  console.error('Unhandled API request error:', {
+  logger.error({
+    err: error,
     name: error.name,
     code: error.code,
-    path: _req.path,
-  });
+    path: req.path,
+    reqId: req.id,
+  }, 'Unhandled API request error');
   return res.status(500).json({ success: false, message: 'An unexpected server error occurred' });
 });
 
@@ -148,6 +158,7 @@ const PORT = process.env.PORT || 5000;
 
 export async function startServer() {
   await connectDB();
+  initializeQueue();
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(PORT, () => {
@@ -155,18 +166,19 @@ export async function startServer() {
       resolve();
     });
   });
-  console.log(`SyncMeet API listening on port ${PORT}`);
+  logger.info(`SyncMeet API listening on port ${PORT}`);
 }
 
 let shutdownPromise;
 export function shutdownServer(signal = 'shutdown') {
   if (shutdownPromise) return shutdownPromise;
   shutdownPromise = (async () => {
-    console.info(`Shutting down SyncMeet after ${signal}`);
+    logger.info(`Shutting down SyncMeet after ${signal}`);
     const forceExitTimer = setTimeout(() => process.exit(1), 10_000);
     forceExitTimer.unref();
     try {
       await new Promise((resolve) => io.close(resolve));
+      await closeQueues();
       await mongoose.disconnect();
       process.exitCode = 0;
     } finally {

@@ -1,5 +1,6 @@
 import express from 'express';
 import { requireRoomAccess } from '../middleware/roomAccessMiddleware.js';
+import { enqueueAiNotesJob, getJobStatus } from '../queues/meetingQueue.js';
 
 const router = express.Router();
 const MAX_TRANSCRIPT_CHARACTERS = 120_000;
@@ -240,5 +241,43 @@ function generateLocalSummary(transcriptList) {
     openQuestions: openQuestions.slice(0, 3),
   };
 }
+
+router.post('/rooms/:roomId/queue-summary', requireRoomAccess, async (req, res) => {
+  const { transcripts = [], customPrompt = '' } = req.body || {};
+  const validationError = validateTranscripts(transcripts, false);
+  if (validationError) {
+    return res.status(400).json({ success: false, message: validationError });
+  }
+
+  try {
+    const job = await enqueueAiNotesJob({
+      roomId: req.params.roomId,
+      transcripts,
+      customPrompt: typeof customPrompt === 'string' ? customPrompt.slice(0, 1000) : '',
+      requesterId: req.roomAccess.participantId,
+    });
+    return res.status(202).json({
+      success: true,
+      message: 'AI summary job enqueued',
+      jobId: job.id,
+    });
+  } catch (error) {
+    console.error('Failed to enqueue AI summary job:', error);
+    return res.status(500).json({ success: false, message: 'Could not queue AI summary task' });
+  }
+});
+
+router.get('/jobs/:jobId', requireRoomAccess, async (req, res) => {
+  try {
+    const status = await getJobStatus(req.params.jobId);
+    if (!status) {
+      return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+    return res.json({ success: true, job: status });
+  } catch (error) {
+    console.error('Failed to query job status:', error);
+    return res.status(500).json({ success: false, message: 'Could not retrieve job status' });
+  }
+});
 
 export default router;

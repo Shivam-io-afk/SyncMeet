@@ -73,3 +73,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - `server/routes/historyRoutes.js`: In `POST /api/history/:roomId/save`, updated host query on `Room.updateOne` to match `{ roomId, $or: [{ hostId: participantId }, { hostId: accountId }] }`.
   - `server/socket/socketHandler.js`: Wrapped `join-room` with top-level `try/catch` emitting `room-join-error` on unhandled exceptions to prevent socket crash/desync.
 
+### Phase 3: Observability, Background Jobs, Containerization & CI
+
+- **Added**:
+  - `server/utils/logger.js`: High-performance structured JSON logging with `pino` and HTTP request tracing with `pino-http`. Automatic request ID generation/preservation (`x-request-id`) and header/credential redaction.
+  - `server/config/sentry.js`: Centralized Sentry error monitoring on the backend with sensitive header and payload sanitization, activated only when `SENTRY_DSN` is configured.
+  - `src/main.jsx`: Client-side `@sentry/react` monitoring with token and header redaction, activated only when `VITE_SENTRY_DSN` is configured.
+  - `server/queues/meetingQueue.js`: Distributed background queue with BullMQ for asynchronous AI note generation, transcript batch processing, and scheduled meeting email reminders. Complete with exponential backoff retries, timeouts, and local in-memory fallback.
+  - `server/routes/aiRoutes.js`: Added `POST /api/ai/rooms/:roomId/queue-summary` and `GET /api/ai/jobs/:jobId` for asynchronous background AI summarization.
+  - `server/routes/meetingFeatureRoutes.js`: Dispatches background email reminder tasks for invitees upon meeting scheduling.
+  - `Dockerfile`: Production multi-stage Docker build with client asset compilation, unprivileged `node` user execution, and automated health checks against `/api/health`.
+  - `.dockerignore`: Exclusion rules preventing secrets, node_modules, and test files from entering container builds.
+  - `docker-compose.yml`: Multi-service orchestration connecting `app`, `mongo:7.0`, and `redis:7-alpine` with healthcheck dependencies.
+  - `.github/workflows/ci.yml`: GitHub Actions automated CI workflow running linting (`npm run lint`), syntax and build checks (`npm run check`), and integration tests (`npm test`) on push and pull requests to `main` and `backend-improve`.
+  - `test/phase3ObservabilityAndQueue.test.js`: Integration tests validating correlation IDs, health endpoint, queue enqueue/execution with in-memory fallback, and Sentry graceful degradation.
+- **Changed**:
+  - Updated `server/server.js` with structured logging, Sentry exception capture, and graceful queue shutdown.
+  - Updated `package.json` with pinned Phase 3 dependencies (`pino`, `pino-http`, `@sentry/node`, `@sentry/react`, `bullmq`) and updated `check:server` script.
+  - Updated `.env.example` with Phase 3 configuration options.
+  - Updated `docs/DECISIONS.md` with architectural records for observability, queues, and containerization.
