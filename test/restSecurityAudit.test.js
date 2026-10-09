@@ -11,7 +11,6 @@ import {
   roomAgendas,
   scheduledMeetings,
 } from '../server/store/memoryMeetingStore.js';
-import { issueRoomAccessToken } from '../server/middleware/roomAccessMiddleware.js';
 
 function startApp() {
   const app = express();
