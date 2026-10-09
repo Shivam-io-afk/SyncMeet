@@ -1,0 +1,135 @@
+// Realistic high-quality portraits matching the reference UI screenshots exactly
+
+export const DEFAULT_PARTICIPANTS = [
+  {
+    id: 'participant-alison',
+    name: 'Alison Roberts',
+    role: 'Product Lead',
+    isMuted: false,
+    isVideoDisabled: false,
+    isSpeaking: true,
+    isSpotlight: true,
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80',
+    videoLoop: 'https://assets.mixkit.co/videos/preview/mixkit-young-woman-talking-on-a-video-call-with-a-laptop-42995-large.mp4',
+  },
+  {
+    id: 'participant-sarah',
+    name: 'Sarah Paige',
+    role: 'UI Designer',
+    isMuted: true,
+    isVideoDisabled: true,
+    isSpeaking: false,
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
+  },
+  {
+    id: 'participant-joe',
+    name: 'Joe Parsons',
+    role: 'Senior Frontend',
+    isMuted: true,
+    isVideoDisabled: true,
+    isSpeaking: false,
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+  },
+  {
+    id: 'participant-peter',
+    name: 'Peter Lee',
+    role: 'Full Stack Engineer',
+    isMuted: false,
+    isVideoDisabled: false,
+    isSpeaking: true,
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=500&q=80',
+    videoLoop: 'https://assets.mixkit.co/videos/preview/mixkit-man-working-with-headphones-on-his-laptop-42984-large.mp4',
+  },
+  {
+    id: 'participant-luke',
+    name: 'Luke Smith',
+    role: 'DevOps Specialist',
+    isMuted: true,
+    isVideoDisabled: true,
+    isSpeaking: false,
+    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
+  },
+];
+
+export const SCHEDULED_MEETINGS = [
+  {
+    id: 'm-1',
+    title: 'Management Team',
+    time: 'Meeting at 14:30',
+    timeRaw: '14:30',
+    status: 'completed',
+    iconType: 'check',
+    roomId: 'mgmt-team-sync',
+    participants: [
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80',
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80',
+    ],
+  },
+  {
+    id: 'm-2',
+    title: 'Development Team',
+    time: 'Meeting at 16:30',
+    timeRaw: '16:30',
+    status: 'reminder',
+    iconType: 'reminder',
+    roomId: 'dev-team-daily',
+    participants: [
+      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=80',
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80',
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
+      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80',
+      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80',
+    ],
+  },
+  {
+    id: 'm-3',
+    title: 'Redesign Landing Page',
+    time: 'Meeting at 18:30',
+    timeRaw: '18:30',
+    status: 'upcoming',
+    iconType: null,
+    roomId: 'landing-redesign-sync',
+    participants: [
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80',
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80',
+    ],
+  },
+  {
+    id: 'm-4',
+    title: 'Scrum Meeting',
+    time: 'Meeting at 20:00',
+    timeRaw: '20:00',
+    status: 'upcoming',
+    iconType: null,
+    roomId: 'scrum-sprint-planning',
+    participants: [
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
+      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80',
+    ],
+  },
+  {
+    id: 'm-5',
+    title: 'Saas Website',
+    time: 'Meeting at 22:00',
+    timeRaw: '22:00',
+    status: 'upcoming',
+    iconType: null,
+    roomId: 'saas-prod-review',
+    participants: [
+      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=80',
+      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80',
+    ],
+  },
+];
+
+export const DAYS_OF_WEEK = [
+  { day: 'MON', date: 24 },
+  { day: 'TUE', date: 25, isCurrent: true },
+  { day: 'WED', date: 26 },
+  { day: 'THU', date: 27 },
+  { day: 'FRI', date: 28 },
+  { day: 'SAT', date: 29 },
+  { day: 'SUN', date: 30 },
+];
+

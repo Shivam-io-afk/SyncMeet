@@ -1,0 +1,44 @@
+{
+  "name": "syncmeet-ai",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "server": "node server/server.js",
+    "dev:all": "concurrently -n \"VITE,SERVER\" -c \"cyan,magenta\" \"npm run dev\" \"npm run server\"",
+    "build": "vite build",
+    "check:server": "node --check server/server.js && node --check server/config/db.js && node --check server/middleware/authMiddleware.js && node --check server/middleware/roomAccessMiddleware.js && node --check server/store/memoryMeetingStore.js && node --check server/models/User.js && node --check server/models/AuthSession.js && node --check server/models/Room.js && node --check server/models/MeetingAttendance.js && node --check server/models/Transcript.js && node --check server/models/AINote.js && node --check server/models/ScheduledMeeting.js && node --check server/models/MeetingAgenda.js && node --check server/models/MeetingPoll.js && node --check server/models/MeetingQuestion.js && node --check server/models/BreakoutSession.js && node --check server/routes/authRoutes.js && node --check server/routes/roomRoutes.js && node --check server/routes/aiRoutes.js && node --check server/routes/historyRoutes.js && node --check server/routes/meetingFeatureRoutes.js && node --check server/socket/socketHandler.js && node --check test/authLifecycle.test.js && node --check test/storageAndDbBridge.test.js",
+    "check": "npm run check:server && npm run build",
+    "test": "node --test --test-concurrency=1",
+    "preview": "vite preview",
+    "start": "node server/server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^1.16.0",
+    "mongoose": "^9.11.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^10.0.5",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.0.7"
+  }
+}

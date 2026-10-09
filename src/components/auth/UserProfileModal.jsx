@@ -1,0 +1,138 @@
+import React, { useEffect, useState } from 'react';
+import { User, Briefcase, Check, X, Palette } from 'lucide-react';
+import { cryptoAuthService } from '../../services/cryptoAuthService';
+
+export function UserProfileModal({ isOpen, user, onClose, onProfileUpdated }) {
+  const [name, setName] = useState(user?.name || '');
+  const [title, setTitle] = useState(user?.title || '');
+  const [avatarColor, setAvatarColor] = useState(user?.avatarColor || 'from-[#ff8586] to-[#d85e77]');
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !user) return;
+    setName(user.name || '');
+    setTitle(user.title || '');
+    setAvatarColor(user.avatarColor || 'from-[#ff8586] to-[#d85e77]');
+    setSaved(false);
+  }, [isOpen, user?.id]);
+
+  if (!isOpen || !user) return null;
+
+  const colorOptions = [
+    { label: 'Coral / Rose', val: 'from-[#ff8586] to-[#d85e77]' },
+    { label: 'Emerald / Teal', val: 'from-emerald-600 to-teal-500' },
+    { label: 'Purple / Pink', val: 'from-purple-600 to-pink-500' },
+    { label: 'Amber / Orange', val: 'from-amber-600 to-orange-500' },
+    { label: 'Blue / Indigo', val: 'from-blue-600 to-indigo-500' },
+  ];
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    const updated = await cryptoAuthService.updateProfile({
+      name: name.trim(),
+      title: title.trim(),
+      avatarColor,
+    });
+
+    if (!updated) return;
+    onProfileUpdated(updated);
+    setSaved(true);
+    setTimeout(() => {
+      setSaved(false);
+      onClose();
+    }, 1200);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+      <div className="glass-panel w-full max-w-md rounded-3xl border border-white/10 shadow-2xl p-6 md:p-8 relative">
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="text-center mb-6">
+          <div className={`w-16 h-16 rounded-full bg-gradient-to-tr ${avatarColor} p-0.5 mx-auto mb-3 shadow-xl flex items-center justify-center`}>
+            <div className="w-full h-full rounded-full bg-surface-elevated flex items-center justify-center text-2xl font-bold text-white">
+              {name ? name.charAt(0).toUpperCase() : 'U'}
+            </div>
+          </div>
+          <h2 className="text-lg font-bold text-white">{name || 'Your Profile'}</h2>
+          <p className="text-xs text-gray-400">{user.email}</p>
+        </div>
+
+        <form onSubmit={handleSave} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-300 mb-1">
+              Display Name
+            </label>
+            <div className="relative">
+              <User className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={name}
+                required
+                maxLength={80}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-surface-canvas border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#ff8586]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-300 mb-1">
+              {user.isGuest ? 'Description' : 'Role / Title'}
+            </label>
+            <div className="relative">
+              <Briefcase className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full bg-surface-canvas border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#ff8586]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-300 mb-1.5 flex items-center gap-1.5">
+              <Palette className="w-3.5 h-3.5 text-[#ff8586]" />
+              Avatar Gradient Theme
+            </label>
+            <div className="flex gap-2">
+              {colorOptions.map((opt) => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  onClick={() => setAvatarColor(opt.val)}
+                  className={`w-8 h-8 rounded-full bg-gradient-to-tr ${opt.val} transition-all ${
+                    avatarColor === opt.val ? 'ring-2 ring-white scale-110 shadow-lg' : 'opacity-60 hover:opacity-100'
+                  }`}
+                  title={opt.label}
+                />
+              ))}
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-[#f26d70] hover:bg-[#ff7d80] text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all text-xs active:scale-98 mt-2"
+          >
+            {saved ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-400" />
+                <span>Profile Saved!</span>
+              </>
+            ) : (
+              <span>Save Changes</span>
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
