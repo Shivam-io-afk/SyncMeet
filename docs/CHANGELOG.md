@@ -49,3 +49,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - BUG-005 (Video tile keying duplicate ghost tiles).
   - BUG-006 (Meeting-scoped session storage lifecycle).
   - BUG-007 (In-memory presence and MongoDB desynchronization).
+
+### Phase 2: Feature-by-Feature Hardening
+
+- **Added**:
+  - Attached `@socket.io/redis-adapter` to Socket.IO engine in `server/server.js` when Redis is configured for distributed cluster pub/sub.
+  - Added `DELETE /api/features/rooms/:roomId/polls/:pollId` restricted strictly to the meeting host.
+  - Added `DELETE /api/features/rooms/:roomId/questions/:questionId` allowing deletion by either the original author or the meeting host.
+  - Added Socket.IO real-time event broadcasts for `meeting-poll-deleted` and `meeting-question-deleted`.
+  - Added 5-minute timeout and automatic timer unreferencing for pending waiting-room knock requests in `server/socket/socketHandler.js` to prevent memory leaks and hanging background events.
+  - Unreferenced disconnection grace period timers (`timer.unref()`) to prevent Node.js event-loop hangs during tests and graceful shutdowns.
+  - Automated test suite `test/phase2Hardening.test.js` validating question/poll deletion permissions, error statuses, and socket event broadcasts.
+- **Changed**:
+  - Cleaned up unused destructured variables in `server/routes/meetingFeatureRoutes.js` and `server/socket/socketHandler.js`.
+  - Updated `package.json` `check:server` script to include `test/phase2Hardening.test.js`.
