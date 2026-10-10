@@ -6,6 +6,7 @@ export function LiveTranscript({
   transcripts = [],
   interimText = '',
   isListening = true,
+  transcriptionError = '',
   onAddTranscript,
   onClearTranscripts,
 }) {
@@ -48,6 +49,15 @@ export function LiveTranscript({
           </button>
         )}
       </div>
+
+      {transcriptionError && (
+        <div
+          role="alert"
+          className="border-b border-[#f2d5ca] bg-[#fff5f0] px-3.5 py-2 text-[11px] leading-relaxed text-[#8f443a] dark:border-[#4d2320] dark:bg-[#241514] dark:text-[#fca5a5]"
+        >
+          {transcriptionError}
+        </div>
+      )}
 
       {/* Transcript Scroll Container */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">

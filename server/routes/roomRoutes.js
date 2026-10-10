@@ -14,7 +14,10 @@ const router = express.Router();
 // @desc    Create a new meeting room (Authenticated hosts only)
 // @access  Private
 router.post('/create', protect, async (req, res) => {
-  const { roomId, title, settings } = req.body;
+  const { roomId, title, settings, isLocked } = req.body;
+  if (isLocked !== undefined && typeof isLocked !== 'boolean') {
+    return res.status(400).json({ success: false, message: 'Room lock state must be a boolean' });
+  }
   if (roomId !== undefined && (
     typeof roomId !== 'string'
     || !roomId.trim()
@@ -31,7 +34,7 @@ router.post('/create', protect, async (req, res) => {
     title: title || 'Instant Meeting',
     hostId: hostUser.id || hostUser._id,
     hostName: hostUser.name || 'Meeting Host',
-    isLocked: false,
+    isLocked: isLocked ?? true,
     settings: {
       allowScreenShare: true,
       allowAINotes: true,
@@ -83,6 +86,10 @@ router.post('/create', protect, async (req, res) => {
 router.post('/guest', optionalProtect, async (req, res) => {
   const title = typeof req.body?.title === 'string' ? req.body.title.trim() : 'Instant Meeting';
   const hostName = typeof req.body?.hostName === 'string' ? req.body.hostName.trim() : 'Meeting Host';
+  const isLocked = req.body?.isLocked;
+  if (isLocked !== undefined && typeof isLocked !== 'boolean') {
+    return res.status(400).json({ success: false, message: 'Room lock state must be a boolean' });
+  }
   if (!title || title.length > 150 || !hostName || hostName.length > 120) {
     return res.status(400).json({ success: false, message: 'Provide a valid meeting title and host name' });
   }
@@ -94,7 +101,7 @@ router.post('/guest', optionalProtect, async (req, res) => {
     title,
     hostId,
     hostName,
-    isLocked: false,
+    isLocked: isLocked ?? true,
     settings: { allowScreenShare: true, allowAINotes: true, allowChat: true, allowWhiteboard: true },
     attendeeIds: [],
     participants: [],
@@ -141,10 +148,7 @@ router.post('/:roomId/join', optionalProtect, async (req, res) => {
     }
     const isHost = Boolean(req.user && room?.hostId && String(req.user.id || req.user._id) === String(room.hostId));
     const userId = req.user ? String(req.user.id || req.user._id) : null;
-    const participantId = userId
-      || (typeof req.body?.participantId === 'string' && req.body.participantId.trim()
-        ? req.body.participantId.trim()
-        : `guest-${randomUUID()}`);
+    const participantId = userId || `guest-${randomUUID()}`;
     const role = isHost ? 'host' : 'participant';
     const accessToken = issueRoomAccessToken({
       roomId,
@@ -213,7 +217,7 @@ router.get('/:roomId/state', requireRoomAccess, async (req, res) => {
           isMuted: Boolean(p.isMuted),
           isVideoOff: Boolean(p.isVideoOff),
           joinedAt: p.joinedAt,
-          isDisconnected: Boolean(p.isDisconnected),
+          isDisconnected: Boolean(p.isDisconnected || !p.socketId),
         })),
         caller: {
           participantId: access.participantId,

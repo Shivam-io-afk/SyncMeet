@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Check, Shield, Users, Sparkles, Radio, Database } from 'lucide-react';
+import { Copy, Shield, Users, Sparkles, Radio, Database } from 'lucide-react';
 import { ThemeToggle } from '../common/ThemeToggle';
 
 async function copyToClipboard(text) {
@@ -32,6 +32,7 @@ export function HeaderBar({
   roomId, 
   participantCount = 1, 
   isTranscribing = false,
+  transcriptionError = '',
   isSpeechSupported = false,
   isTranscriptionEnabled = true,
   isMuted = false,
@@ -125,21 +126,6 @@ export function HeaderBar({
 
         <div className="hidden h-4 w-px bg-[#e2e3de] sm:block dark:bg-[#222736]" />
 
-        {/* Room Code Pill with Copy */}
-        <button
-          type="button"
-          onClick={copyRoomLink}
-          className="flex max-w-[34vw] items-center gap-2 rounded-full border border-[#e7e8e3] bg-white px-3 py-1.5 text-xs font-mono text-[#686b63] transition-all hover:border-[#cbd0c2] hover:bg-[#f4f5f1] active:scale-95 dark:border-[#262c3c] dark:bg-[#181d28] dark:text-[#a0a6b5] dark:hover:border-[#384158] dark:hover:bg-[#202737]"
-          title="Click to copy meeting link"
-        >
-          <span>{roomId}</span>
-          {copied ? (
-            <Check className="h-3.5 w-3.5 text-[#7d9c56] dark:text-[#9bbc6d]" />
-          ) : (
-            <Copy className="h-3.5 w-3.5 text-[#8a8d84] dark:text-[#808696]" />
-          )}
-        </button>
-
         {/* Meeting Timer */}
         <div className="flex items-center gap-1.5 rounded-full border border-[#efc8b7] bg-[#fff6f0] px-2.5 py-1 font-mono text-xs text-[#6d584e] dark:border-[#483325] dark:bg-[#251b14] dark:text-[#f3a67d]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#ee7569]" />
@@ -149,15 +135,25 @@ export function HeaderBar({
 
       {/* Center: Live AI Transcription status */}
       <div className="hidden md:flex items-center gap-2.5">
-        <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium transition-colors ${
-          isTranscribing
+        <div
+          title={transcriptionError || undefined}
+          className={`flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium transition-colors ${
+          transcriptionError
+            ? 'bg-[#fff0e8] border-[#f2d5ca] text-[#a44b3e] dark:bg-[#2a1413] dark:border-[#4d2320] dark:text-[#fca5a5]'
+            : isTranscribing
             ? 'bg-[#edf4e3] border-[#dce8cb] text-[#657b4a] dark:bg-[#152319] dark:border-[#203926] dark:text-[#88c580]'
             : 'bg-[#f2f3ef] border-[#e7e8e3] text-[#777a72] dark:bg-[#181d28] dark:border-[#262c3c] dark:text-[#a0a6b5]'
         }`}>
-          <span className={`h-2 w-2 rounded-full ${isTranscribing ? 'bg-[#9bbc6d] animate-pulse' : 'bg-[#b5b7b0] dark:bg-[#585e70]'}`} />
+          <span className={`h-2 w-2 rounded-full ${
+            transcriptionError
+              ? 'bg-[#d94d49]'
+              : isTranscribing ? 'bg-[#9bbc6d] animate-pulse' : 'bg-[#b5b7b0] dark:bg-[#585e70]'
+          }`} />
           <span>
-            {!isSpeechSupported
-              ? 'Captions unavailable'
+            {transcriptionError
+              ? 'Transcription needs attention'
+              : !isSpeechSupported
+              ? 'Transcription unavailable'
               : !isTranscriptionEnabled
                 ? 'Transcription off'
               : isTranscribing

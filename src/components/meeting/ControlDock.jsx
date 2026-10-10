@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Mic, MicOff, Video, VideoOff, MonitorUp, 
-  Sparkles, PhoneOff, MessageSquare, 
+  Sparkles, PhoneOff, MessageSquare, FileText,
   Smile, Hand, Subtitles, PenTool 
 } from 'lucide-react';
 
@@ -20,7 +20,8 @@ export function ControlDock({
   captionsActive = true,
   onToggleCaptions,
   isTranscriptionEnabled = true,
-  isSpeechSupported = true,
+  transcriptionError = '',
+  isSpeechSupported = false,
   onToggleTranscription,
 }) {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -167,6 +168,29 @@ export function ControlDock({
             title={captionsActive ? 'Hide live captions' : 'Show live captions'}
           >
             <Subtitles className="w-5 h-5" />
+          </button>
+
+          {/* Speech recognition is independent of whether captions are visible. */}
+          <button
+            type="button"
+            onClick={onToggleTranscription}
+            disabled={!isSpeechSupported}
+            aria-label={`${isTranscriptionEnabled ? 'Pause' : 'Start'} transcription${transcriptionError ? `. ${transcriptionError}` : ''}`}
+            aria-pressed={isSpeechSupported && isTranscriptionEnabled}
+            className={`w-11 h-11 md:w-12 md:h-12 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${
+              !isSpeechSupported
+                ? 'cursor-not-allowed bg-white/[0.04] text-gray-500 opacity-60'
+                : transcriptionError
+                  ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                : isTranscriptionEnabled
+                  ? 'bg-[#b9d88d] text-[#262820] shadow-lg shadow-[#b9d88d]/20'
+                  : 'bg-white/[0.08] hover:bg-white/[0.15] text-gray-300 border border-white/[0.06]'
+            }`}
+            title={transcriptionError || (!isSpeechSupported
+              ? 'Live transcription is not supported by this browser'
+              : isTranscriptionEnabled ? 'Pause live transcription' : 'Start live transcription')}
+          >
+            <FileText className="w-5 h-5" />
           </button>
 
           <div className="h-6 w-px bg-white/10 mx-0.5" />

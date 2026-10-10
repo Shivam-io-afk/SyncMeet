@@ -29,7 +29,14 @@ export function VideoGrid({
   const pinnedParticipant = participants.find(
     (participant) => (participant.id || 'local') === pinnedId
   );
-  const spotlightParticipant = pinnedParticipant
+  const localScreenShare = Boolean(isScreenSharing && screenStream);
+  const remoteScreenShare = localScreenShare
+    ? null
+    : remoteParticipants.find((participant) => participant.isScreenSharing);
+  const spotlightParticipant = localScreenShare
+    ? participants[0]
+    : remoteScreenShare
+      || pinnedParticipant
     || participants.find((participant) => participant.isSpeaking)
     || remoteParticipants[0]
     || participants[0];
@@ -43,23 +50,25 @@ export function VideoGrid({
         <div className="relative aspect-video w-full max-h-full">
           <VideoTile
             className="absolute inset-0"
-            participant={isScreenSharing && screenStream
+            participant={localScreenShare
               ? { name: `${localUser.name}'s Screen`, isVideoDisabled: false, isMuted: true }
+              : remoteScreenShare
+                ? { ...remoteScreenShare, name: `${remoteScreenShare.name}'s Screen` }
               : spotlightParticipant}
-            stream={isScreenSharing && screenStream
+            stream={localScreenShare
               ? screenStream
               : spotlightParticipant.isLocal ? localStream : spotlightParticipant.stream}
-            isLocal={!isScreenSharing && spotlightParticipant.isLocal}
-            isScreenShare={Boolean(isScreenSharing && screenStream)}
+            isLocal={!localScreenShare && spotlightParticipant.isLocal}
+            isScreenShare={Boolean(localScreenShare || remoteScreenShare || spotlightParticipant.isScreenSharing)}
             audioLevel={spotlightParticipant.isLocal ? localAudioLevel : spotlightParticipant.audioLevel}
             isSpeaking={spotlightParticipant.isLocal ? localIsSpeaking : spotlightParticipant.isSpeaking}
             isPinned={Boolean(pinnedParticipant)}
             isSpotlight
-            onTogglePin={isScreenSharing && screenStream
+            onTogglePin={localScreenShare || remoteScreenShare
               ? undefined
               : () => onTogglePin(spotlightParticipant.id || 'local')}
           />
-          {isScreenSharing && screenStream && (
+          {(localScreenShare || remoteScreenShare) && (
             <div className="pointer-events-none absolute inset-0 rounded-[22px] border border-[#b9d88d]/60" />
           )}
         </div>

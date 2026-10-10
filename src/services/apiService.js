@@ -91,7 +91,7 @@ class ApiService {
     }
   }
 
-  async request(endpoint, options = {}) {
+  async request(endpoint, options = {}, { ignoreNotFound = false } = {}) {
     const url = `${getApiBaseUrl()}${endpoint}`;
     const canRefresh = Boolean(this.getToken())
       && !['/api/auth/login', '/api/auth/register', '/api/auth/refresh'].includes(endpoint);
@@ -110,11 +110,15 @@ class ApiService {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.message || `Request failed with status ${response.status}`);
+        const error = new Error(data.message || `Request failed with status ${response.status}`);
+        error.status = response.status;
+        throw error;
       }
       return data;
     } catch (error) {
-      console.warn(`[API] Request to ${endpoint} failed:`, error.message);
+      if (!(ignoreNotFound && error.status === 404)) {
+        console.warn(`[API] Request to ${endpoint} failed:`, error.message);
+      }
       throw error;
     }
   }
@@ -341,7 +345,11 @@ class ApiService {
   }
 
   async getScheduledMeeting(roomId) {
-    return await this.request(`/api/features/schedules/${encodeURIComponent(roomId)}`, { method: 'GET' });
+    return await this.request(
+      `/api/features/schedules/${encodeURIComponent(roomId)}`,
+      { method: 'GET' },
+      { ignoreNotFound: true }
+    );
   }
 
   async createScheduledMeeting(meeting) {

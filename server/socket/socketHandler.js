@@ -61,6 +61,7 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
       joinedAt: participant.joinedAt || new Date(),
       isMuted: Boolean(participant.isMuted),
       isVideoOff: Boolean(participant.isVideoOff),
+      isDisconnected: Boolean(participant.isDisconnected),
     };
 
     if (isDbConnected()) {
@@ -102,6 +103,40 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
       ...participants.filter((item) => String(item.userId) !== storedParticipant.userId),
       storedParticipant,
     ];
+    return true;
+  };
+  const removeParticipantState = async (roomId, participantId, socketId) => {
+    const userId = String(participantId);
+    if (isDbConnected()) {
+      const result = await Room.updateOne(
+        {
+          roomId,
+          isActive: true,
+          participants: { $elemMatch: { userId, socketId } },
+        },
+        {
+          $pull: {
+            participants: { userId, socketId },
+            admittedParticipantIds: userId,
+          },
+        }
+      );
+      return result.matchedCount === 1;
+    }
+
+    const room = inMemoryRooms.get(roomId);
+    if (!room || room.isActive === false) return false;
+    const participants = Array.isArray(room.participants) ? room.participants : [];
+    const hasCurrentParticipant = participants.some(
+      (participant) => String(participant.userId) === userId && participant.socketId === socketId
+    );
+    if (!hasCurrentParticipant) return false;
+    room.participants = participants.filter(
+      (participant) => String(participant.userId) !== userId || participant.socketId !== socketId
+    );
+    room.admittedParticipantIds = (room.admittedParticipantIds || []).filter(
+      (id) => String(id) !== userId
+    );
     return true;
   };
   const restoreActiveBreakout = async (parentRoomId) => {
@@ -346,15 +381,16 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
       } else if (room?.isLocked) {
         roomLocks.set(resolvedParentRoomId, true);
       }
+      const savedParticipant = room?.participants?.find(
+        (participant) => String(participant.userId) === String(access.participantId)
+      );
       const isAdmitted = admittedKnocks.get(socket.id) === resolvedParentRoomId
-        || room?.admittedParticipantIds?.includes(access.participantId);
+        || room?.admittedParticipantIds?.includes(access.participantId)
+        || Boolean(savedParticipant);
       if (room?.isLocked && access.role !== 'host' && !isAdmitted) {
         socket.emit('room-join-error', { message: 'This room is locked; ask the host to admit you' });
         return;
       }
-      const savedParticipant = room?.participants?.find(
-        (participant) => String(participant.userId) === String(access.participantId)
-      );
       const mediaState = {
         isMuted: savedParticipant ? Boolean(savedParticipant.isMuted) : Boolean(user?.isMuted),
         isVideoOff: savedParticipant ? Boolean(savedParticipant.isVideoOff) : Boolean(user?.isVideoOff),
@@ -445,6 +481,7 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
         accountId: access.accountId,
         name: access.displayName || user?.name || 'Guest',
         role: access.role,
+        isScreenSharing: user?.isScreenSharing === true,
         ...mediaState,
       };
       socket.parentRoomId = resolvedParentRoomId;
@@ -460,6 +497,7 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
         isMuted: mediaState.isMuted,
         isVideoOff: mediaState.isVideoOff,
         isHandRaised: false,
+        isScreenSharing: socket.user.isScreenSharing,
       });
       const participant = roomParticipants.get(socket.id);
       try {
@@ -502,6 +540,7 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
           isMuted: data.isMuted,
           isVideoOff: data.isVideoOff,
           isHandRaised: data.isHandRaised,
+          isScreenSharing: Boolean(data.isScreenSharing),
         }));
 
       socket.emit('room-peers', { peers: existingPeers });
@@ -516,6 +555,19 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
       socket.emit('room-join-error', { message: 'An unexpected error occurred while joining the room' });
     }
   });
+
+    socket.on('screen-share-state', (payload) => {
+      const { isScreenSharing } = readSocketPayload(payload);
+      const participant = socket.roomId ? rooms.get(socket.roomId)?.get(socket.id) : null;
+      if (!participant || typeof isScreenSharing !== 'boolean') return;
+      participant.isScreenSharing = isScreenSharing;
+      participant.user = { ...participant.user, isScreenSharing };
+      socket.user = { ...socket.user, isScreenSharing };
+      socket.to(socket.roomId).emit('participant-screen-share', {
+        socketId: socket.id,
+        isScreenSharing,
+      });
+    });
 
     socket.on('update-media-state', async (payload) => {
       const { isMuted, isVideoOff } = readSocketPayload(payload);
@@ -967,6 +1019,16 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
       socket.isIntentionalLeave = true;
       const accountId = socket.user?.accountId;
       const parentRoomId = socket.parentRoomId || socket.roomId;
+      const participant = socket.roomId ? rooms.get(socket.roomId)?.get(socket.id) : null;
+      if (participant?.isScreenSharing) {
+        participant.isScreenSharing = false;
+        participant.user = { ...participant.user, isScreenSharing: false };
+        socket.user = { ...socket.user, isScreenSharing: false };
+        socket.to(socket.roomId).emit('participant-screen-share', {
+          socketId: socket.id,
+          isScreenSharing: false,
+        });
+      }
       const graceKey = `${parentRoomId}:${socket.user?.id || socket.id}`;
       const existingGrace = pendingDisconnects.get(graceKey);
       if (existingGrace?.timer) clearTimeout(existingGrace.timer);
@@ -1000,6 +1062,16 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
           console.error('Persist meeting attendance leave error:', error);
         }
       }
+      if (parentRoomId && socket.user?.id) {
+        try {
+          await removeParticipantState(parentRoomId, socket.user.id, socket.id);
+        } catch (error) {
+          console.error('Remove intentionally left room participant state error:', error);
+          socket.emit('media-state-persistence-error', {
+            message: 'Your meeting leave state could not be saved.',
+          });
+        }
+      }
     });
 
     // Disconnect handling (with grace period for unannounced drops and reloads)
@@ -1031,6 +1103,15 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
       }
 
       const activeParticipant = socket.roomId ? rooms.get(socket.roomId)?.get(socket.id) : null;
+      if (activeParticipant?.isScreenSharing) {
+        activeParticipant.isScreenSharing = false;
+        activeParticipant.user = { ...activeParticipant.user, isScreenSharing: false };
+        socket.user = { ...socket.user, isScreenSharing: false };
+        socket.to(socket.roomId).emit('participant-screen-share', {
+          socketId: socket.id,
+          isScreenSharing: false,
+        });
+      }
       if (activeParticipant && socket.user?.id && parentRoomId && isRoomActive) {
         try {
           await persistParticipantState(parentRoomId, {

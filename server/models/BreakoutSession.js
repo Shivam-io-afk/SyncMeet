@@ -13,4 +13,13 @@ const breakoutSessionSchema = new mongoose.Schema({
   createdBy: { type: String, default: 'guest' },
 }, { timestamps: true });
 
+breakoutSessionSchema.index(
+  { roomId: 1, status: 1 },
+  {
+    name: 'roomId_1_status_1_active_unique',
+    unique: true,
+    partialFilterExpression: { status: 'active' },
+  }
+);
+
 export const BreakoutSession = mongoose.model('BreakoutSession', breakoutSessionSchema);

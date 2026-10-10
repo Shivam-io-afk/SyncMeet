@@ -16,6 +16,7 @@ export function SidebarContainer({
   transcripts = [],
   interimText = '',
   isListening = true,
+  transcriptionError = '',
   onAddTranscript,
   onClearTranscripts,
   notesData,
@@ -128,6 +129,7 @@ export function SidebarContainer({
               transcripts={transcripts}
               interimText={interimText}
               isListening={isListening}
+              transcriptionError={transcriptionError}
               onAddTranscript={onAddTranscript}
               onClearTranscripts={onClearTranscripts}
             />

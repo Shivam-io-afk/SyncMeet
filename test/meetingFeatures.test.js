@@ -78,7 +78,7 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
   const server = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}/api/features`;
-  const request = async (path, method = 'GET', body) => {
+  const request = async (path, method = 'GET', body, participantId = 'test-host', role = 'host') => {
     const roomId = path.match(/\/(?:rooms|schedules)\/([^/]+)/)?.[1];
     const response = await fetch(`${baseUrl}${path}`, {
       method,
@@ -87,9 +87,9 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
         ...(roomId ? {
           'X-Room-Access-Token': issueRoomAccessToken({
             roomId: decodeURIComponent(roomId),
-            participantId: 'test-host',
-            displayName: 'Test Host',
-            role: 'host',
+            participantId,
+            displayName: role === 'host' ? 'Test Host' : 'Test Participant',
+            role,
           }),
         } : {}),
       },
@@ -149,12 +149,43 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
     assert.equal((await request(`/rooms/${roomId}/notes`)).data.notes.summary, 'Updated release review');
     assert.deepEqual((await request(`/rooms/${roomId}/notes`)).data.notes.actionItems, []);
 
+    assert.equal((await request(`/rooms/${roomId}/polls`, 'POST', {
+      question: ' ',
+      options: ['Yes', 'No'],
+    })).status, 400);
+    assert.equal((await request(`/rooms/${roomId}/polls`, 'POST', {
+      question: 'q'.repeat(301),
+      options: ['Yes', 'No'],
+    })).status, 400);
+    assert.equal((await request(`/rooms/${roomId}/polls`, 'POST', {
+      question: 'Option too long',
+      options: ['x'.repeat(121), 'No'],
+    })).status, 400);
+    assert.equal((await request(`/rooms/${roomId}/polls`, 'POST', {
+      question: 'Too few options',
+      options: ['Yes'],
+    })).status, 400);
+    assert.equal((await request(`/rooms/${roomId}/polls`, 'POST', {
+      question: 'Duplicate options',
+      options: ['Yes', 'yes'],
+    })).status, 400);
+    assert.equal((await request(`/rooms/${roomId}/polls`, 'POST', {
+      question: 'Invalid multiple choice flag',
+      options: ['Yes', 'No'],
+      allowMultiple: 'true',
+    })).status, 400);
+
     const pollResponse = await request(`/rooms/${roomId}/polls`, 'POST', {
       question: 'Ready to release?',
       options: ['Yes', 'No'],
     });
     assert.equal(pollResponse.status, 201);
     const poll = pollResponse.data.poll;
+    assert((await request(`/rooms/${roomId}/polls`)).data.polls.some((item) => item.id === poll.id));
+    assert.equal((await request(`/rooms/${roomId}/polls`, 'POST', {
+      question: 'Too many options',
+      options: Array.from({ length: 9 }, (_, index) => `Option ${index + 1}`),
+    })).status, 400);
     const voted = await request(`/rooms/${roomId}/polls/${poll.id}/votes`, 'POST', {
       voterId: 'test-voter',
       optionIds: [poll.options[0].id],
@@ -171,6 +202,8 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
       optionIds: [poll.options[1].id],
     })).status, 409);
 
+    assert.equal((await request(`/rooms/${roomId}/questions`, 'POST', { text: '  ' })).status, 400);
+    assert.equal((await request(`/rooms/${roomId}/questions`, 'POST', { text: 'q'.repeat(1001) })).status, 400);
     const questionResponse = await request(`/rooms/${roomId}/questions`, 'POST', {
       text: 'When will rollout begin?',
       authorId: 'test-voter',
@@ -180,6 +213,7 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
     assert.equal(questionResponse.data.question.authorId, 'test-host');
     assert.equal(questionResponse.data.question.authorName, 'Test Host');
     const questionId = questionResponse.data.question.id;
+    assert((await request(`/rooms/${roomId}/questions`)).data.questions.some((item) => item.id === questionId));
     const upvote = await request(`/rooms/${roomId}/questions/${questionId}/upvote`, 'POST', {
       voterId: 'another-voter',
     });
@@ -188,7 +222,9 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
       voterId: 'test-voter',
     });
     assert.deepEqual(removedUpvote.data.question.upvoterIds, []);
+    assert.equal((await request(`/rooms/${roomId}/questions/${questionId}/answer`, 'PATCH', {}, 'test-participant', 'participant')).status, 403);
     assert.equal((await request(`/rooms/${roomId}/questions/${questionId}/answer`, 'PATCH')).data.question.status, 'answered');
+    assert.equal((await request(`/rooms/${roomId}/questions/unknown-question/answer`, 'PATCH')).status, 404);
 
     const expiredBeforeCreate = {
       id: 'expired-before-create',
@@ -236,6 +272,52 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
     assert.equal((await request('/schedules')).data.meetings.length, 0);
     assert.equal((await request('/schedules', 'POST', { title: '', startsAt: new Date().toISOString() })).status, 400);
   } finally {
+    await closeHttpServer(server);
+  }
+});
+
+test('new guest-hosted rooms default to locked and make participants request admission', async () => {
+  const app = express();
+  app.use(express.json());
+  app.use('/api/rooms', roomRoutes);
+  const server = http.createServer(app);
+  await listen(server);
+  const base = `http://127.0.0.1:${server.address().port}`;
+  let roomId;
+
+  try {
+    const createResponse = await fetch(`${base}/api/rooms/guest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Locked by default', hostName: 'Host' }),
+    });
+    assert.equal(createResponse.status, 201);
+    const created = await createResponse.json();
+    roomId = created.room.roomId;
+    assert.equal(created.room.isLocked, true);
+
+    const stateResponse = await fetch(`${base}/api/rooms/${roomId}/state`, {
+      headers: { 'X-Room-Access-Token': created.accessToken },
+    });
+    assert.equal(stateResponse.status, 200);
+    assert.equal((await stateResponse.json()).state.isLocked, true);
+
+    const joinResponse = await fetch(`${base}/api/rooms/${roomId}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Participant' }),
+    });
+    assert.equal(joinResponse.status, 200);
+    assert.equal((await joinResponse.json()).requiresAdmission, true);
+
+    const invalidLockSetting = await fetch(`${base}/api/rooms/guest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isLocked: 'false' }),
+    });
+    assert.equal(invalidLockSetting.status, 400);
+  } finally {
+    if (roomId) inMemoryRooms.delete(roomId);
     await closeHttpServer(server);
   }
 });
@@ -288,6 +370,7 @@ test('authenticated room creation never reactivates an existing room ID', async 
     const created = await createdResponse.json();
     createdRoomId = created.room.roomId;
     assert.equal(created.room.title, 'Fresh meeting');
+    assert.equal(created.room.isLocked, true, 'new authenticated rooms should start locked by default');
     const hostAccess = verifyRoomAccessToken(created.accessToken, createdRoomId);
     assert.equal(hostAccess.role, 'host');
     assert.equal(hostAccess.accountId, 'room-owner');
@@ -320,7 +403,7 @@ test('room tickets are issued by the backend and required for feature API access
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accountToken}`,
       },
-      body: JSON.stringify({ title: 'Ticket test', hostName: 'Ticket Host' }),
+      body: JSON.stringify({ title: 'Ticket test', hostName: 'Ticket Host', isLocked: false }),
     });
     assert.equal(createdResponse.status, 201);
     const created = await createdResponse.json();
@@ -872,6 +955,116 @@ test('a reloaded participant rejoins with a new socket and still sees existing p
   } finally {
     host.disconnect();
     reloaded?.disconnect();
+    inMemoryRooms.delete(roomId);
+    await new Promise((resolve) => io.close(resolve));
+  }
+});
+
+test('previous room participants can rejoin after locking, while intentional leave revokes access', async () => {
+  const roomId = `locked-rejoin-${Date.now()}`;
+  const app = express();
+  app.use(express.json());
+  app.use('/api/rooms', roomRoutes);
+  const server = http.createServer(app);
+  const io = new Server(server);
+  setupSocketHandlers(io);
+  await listen(server);
+  const url = `http://127.0.0.1:${server.address().port}`;
+  const room = {
+    roomId,
+    hostId: 'rejoin-host',
+    hostName: 'Host',
+    isLocked: false,
+    admittedParticipantIds: [],
+    participants: [],
+    isActive: true,
+  };
+  inMemoryRooms.set(roomId, room);
+  const host = await connectParticipant(url, 'rejoin-host', 'host', false, roomId);
+  let guest;
+  let reconnectedGuest;
+
+  try {
+    const ticketResponse = await fetch(`${url}/api/rooms/${roomId}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Guest', participantId: 'rejoin-host' }),
+    });
+    assert.equal(ticketResponse.status, 200);
+    const ticket = await ticketResponse.json();
+    assert.notEqual(ticket.participant.id, 'rejoin-host');
+    assert.match(ticket.participant.id, /^guest-/);
+
+    const connectAndJoinGuest = async () => {
+      const client = createClient(url, { transports: ['websocket'], reconnection: false });
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Timed out connecting rejoin guest')), 3000);
+        client.once('connect', () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+        client.once('connect_error', reject);
+      });
+      const joined = waitForEvent(client, 'room-peers');
+      client.emit('join-room', {
+        roomId,
+        user: { id: ticket.participant.id, name: 'Guest', parentRoomId: roomId },
+        accessToken: ticket.accessToken,
+      });
+      await joined;
+      return client;
+    };
+
+    guest = await connectAndJoinGuest();
+    assert.equal(room.participants.length, 2);
+    const lockStatus = waitForEvent(guest, 'room-lock-status');
+    host.emit('host-lock-room', { isLocked: true });
+    assert.deepEqual(await lockStatus, { isLocked: true });
+
+    const stateBeforeRefresh = await fetch(`${url}/api/rooms/${roomId}/state`, {
+      headers: { 'X-Room-Access-Token': ticket.accessToken },
+    });
+    assert.equal(stateBeforeRefresh.status, 200);
+
+    guest.disconnect();
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const storedGuest = room.participants.find((participant) => participant.userId === ticket.participant.id);
+      if (storedGuest?.socketId === null) break;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    const disconnectedGuest = room.participants.find((participant) => participant.userId === ticket.participant.id);
+    assert.equal(disconnectedGuest?.socketId, null);
+    assert.equal(disconnectedGuest?.isDisconnected, true);
+    const disconnectedState = await fetch(`${url}/api/rooms/${roomId}/state`, {
+      headers: { 'X-Room-Access-Token': ticket.accessToken },
+    });
+    const disconnectedStateBody = await disconnectedState.json();
+    assert.equal(disconnectedStateBody.state.participants.find(
+      (participant) => participant.userId === ticket.participant.id
+    )?.isDisconnected, true);
+
+    reconnectedGuest = await connectAndJoinGuest();
+    const rejoinedGuest = room.participants.filter((participant) => participant.userId === ticket.participant.id);
+    assert.equal(rejoinedGuest.length, 1);
+    assert.equal(rejoinedGuest[0].isDisconnected, false);
+
+    reconnectedGuest.emit('leave-room');
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      if (!room.participants.some((participant) => participant.userId === ticket.participant.id)) break;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    assert.equal(room.participants.some((participant) => participant.userId === ticket.participant.id), false);
+    const stateAfterLeave = await fetch(`${url}/api/rooms/${roomId}/state`, {
+      headers: { 'X-Room-Access-Token': ticket.accessToken },
+    });
+    assert.equal(stateAfterLeave.status, 403);
+  } finally {
+    const ended = reconnectedGuest ? waitForEvent(reconnectedGuest, 'meeting-ended-by-host') : null;
+    host.emit('host-end-meeting');
+    if (ended) await ended;
+    guest?.disconnect();
+    reconnectedGuest?.disconnect();
+    host.disconnect();
     inMemoryRooms.delete(roomId);
     await new Promise((resolve) => io.close(resolve));
   }

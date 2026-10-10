@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Video, VideoOff, Mic, MicOff, Settings, Sparkles, ArrowRight, Users, Headphones,
+  Video, VideoOff, Mic, MicOff, Settings, Sparkles, ArrowRight, Headphones,
   Clock3, ChevronRight, Database, CalendarDays, House, MessagesSquare, ShieldCheck,
 } from 'lucide-react';
 import { AudioVisualizer } from '../ui/AudioVisualizer';
@@ -16,7 +16,6 @@ export function DeviceSetup({
   isSpeaking,
   onJoinRoom,
   onOpenHistory,
-  onOpenAuth,
   currentUser = null,
   userMenu = null,
   defaultName = '',
@@ -215,12 +214,6 @@ export function DeviceSetup({
     </section>
   );
 
-  const featureCards = [
-    { icon: Video, title: 'HD video', detail: 'Face-to-face, anywhere', tone: 'bg-[#eff4e7] text-[#799252] dark:bg-[#172215] dark:text-[#a3c978]' },
-    { icon: Users, title: 'Easy to join', detail: 'Share one simple link', tone: 'bg-[#f4eee5] text-[#a2835b] dark:bg-[#292218] dark:text-[#d9a86c]' },
-    { icon: Sparkles, title: 'AI meeting notes', detail: 'Keep decisions in sync', tone: 'bg-[#f1eef8] text-[#8873ae] dark:bg-[#221c30] dark:text-[#bca4e6]' },
-  ];
-
   return (
     <div className="relative min-h-dvh overflow-x-hidden bg-[#e5e7eb] p-0 text-[#20211e] dark:bg-[#07090e] dark:text-[#f3f4f6]">
 
@@ -238,24 +231,10 @@ export function DeviceSetup({
               <p className="truncate text-xs font-bold tracking-tight text-[#282a25] sm:text-sm dark:text-[#f3f4f6]">SyncMeet AI</p>
               <p className="hidden truncate text-[10px] text-[#85877f] sm:block dark:text-[#9ca3af]">Intelligent video collaboration</p>
             </div>
-            <span className="mx-1 hidden h-5 w-px bg-[#e5e6df] sm:block dark:bg-[#222736]" />
-            <span className="hidden items-center gap-1.5 rounded-full border border-[#e8e9e3] bg-white px-2.5 py-1 text-[10px] font-medium text-[#6f7269] md:inline-flex dark:border-[#262c3c] dark:bg-[#181d28] dark:text-[#a0a6b5]">
-              <House className="h-3 w-3 text-[#8aa767]" />
-              Meeting setup
-            </span>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle variant="header" />
-            <button
-              type="button"
-              onClick={onOpenHistory}
-              className="flex items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-2.5 py-1.5 text-[10px] font-medium text-[#686b63] transition-colors hover:bg-[#f4f5f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50 sm:px-3 dark:border-[#262c3c] dark:bg-[#181d28] dark:text-[#a0a6b5] dark:hover:bg-[#202737]"
-              title="Open database archives"
-            >
-              <Database className="h-3.5 w-3.5 text-[#8aa767]" />
-              <span className="hidden sm:inline">DB Archives</span>
-            </button>
             <button
               type="button"
               onClick={() => setScheduleModalOpen(true)}
@@ -347,20 +326,10 @@ export function DeviceSetup({
 
                 <form onSubmit={handleJoin} className="mt-4 space-y-3.5">
                   <div>
-                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                    <div className="mb-1.5">
                       <label htmlFor="meeting-display-name" className="text-[11px] font-semibold text-[#555850] dark:text-[#d1d5db]">
                         Your Display Name <span className="text-[#d97868]">*</span>
                       </label>
-                      {onOpenAuth && (
-                        <button
-                          type="button"
-                          onClick={onOpenAuth}
-                          className="inline-flex items-center gap-1 rounded-full border border-[#e8e7f0] bg-[#f5f3fa] px-2 py-1 text-[9px] font-semibold text-[#77659e] transition-colors hover:bg-[#efebf7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b8bc0]/40 dark:border-[#28243d] dark:bg-[#1e1b2e] dark:text-[#b49be8] dark:hover:bg-[#28233d]"
-                        >
-                          <Sparkles className="h-3 w-3" />
-                          Sign in / Switch
-                        </button>
-                      )}
                     </div>
                     <input
                       id="meeting-display-name"
@@ -535,20 +504,6 @@ export function DeviceSetup({
                 </section>
               )}
 
-              <section className="grid grid-cols-3 gap-2 sm:gap-3" aria-label="Meeting features">
-                {featureCards.map(({ icon: Icon, title, detail, tone }) => (
-                  <div
-                    key={title}
-                    className="group min-w-0 rounded-[18px] border border-[#e8e9e3] bg-white p-3 shadow-[0_6px_18px_rgba(37,43,34,0.035)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(37,43,34,0.08)] sm:rounded-[20px] sm:p-4 dark:border-[#1e2330] dark:bg-[#12151e] dark:shadow-none"
-                  >
-                    <span className={`mb-2.5 flex h-8 w-8 items-center justify-center rounded-xl ${tone} transition-transform group-hover:scale-105`}>
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <p className="truncate text-[10px] font-semibold text-[#3b3d36] sm:text-xs dark:text-[#f3f4f6]">{title}</p>
-                    <p className="mt-1 hidden text-[10px] text-[#92948d] sm:block dark:text-[#9ca3af]">{detail}</p>
-                  </div>
-                ))}
-              </section>
             </main>
 
             <aside className="hidden min-w-0 flex-col gap-3 2xl:flex">

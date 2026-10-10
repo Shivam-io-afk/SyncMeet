@@ -214,6 +214,13 @@ function rejectDemoAuthentication(res) {
   return true;
 }
 
+function rejectUnimplementedAuthProvider(res) {
+  return res.status(501).json({
+    success: false,
+    message: 'This authentication provider is not configured',
+  });
+}
+
 // In-memory OTP storage: email -> { code, expiresAt }
 const activeOtps = new Map();
 
@@ -674,37 +681,9 @@ router.get('/google/callback', async (req, res) => {
   }
 });
 
-// @route   POST /api/auth/github
-router.post('/github', async (req, res) => {
-  if (rejectDemoAuthentication(res)) return;
-  const { email, name, avatar, githubId } = req.body;
-  if (!email) {
-    return res.status(400).json({ success: false, message: 'GitHub account email is required' });
-  }
-  try {
-    const result = await findOrCreateSocialUser(email, name || 'GitHub Developer', avatar, 'github', githubId);
-    return res.json({ success: true, ...result });
-  } catch (err) {
-    console.error('GitHub auth error:', err);
-    return res.status(500).json({ success: false, message: 'GitHub authentication failed' });
-  }
-});
-
-// @route   POST /api/auth/microsoft
-router.post('/microsoft', async (req, res) => {
-  if (rejectDemoAuthentication(res)) return;
-  const { email, name, avatar, microsoftId } = req.body;
-  if (!email) {
-    return res.status(400).json({ success: false, message: 'Microsoft account email is required' });
-  }
-  try {
-    const result = await findOrCreateSocialUser(email, name || 'Microsoft User', avatar, 'microsoft', microsoftId);
-    return res.json({ success: true, ...result });
-  } catch (err) {
-    console.error('Microsoft auth error:', err);
-    return res.status(500).json({ success: false, message: 'Microsoft authentication failed' });
-  }
-});
+// These routes stay unavailable until their provider-side OAuth flows are implemented.
+router.post('/github', (_req, res) => rejectUnimplementedAuthProvider(res));
+router.post('/microsoft', (_req, res) => rejectUnimplementedAuthProvider(res));
 
 // @route   POST /api/auth/otp/send
 // @desc    Generate and send 6-digit verification code to email

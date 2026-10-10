@@ -22,8 +22,8 @@ Audit the existing codebase rather than treating historical project checkmarks a
 | Backend | Node ES modules, Express 5, Socket.IO in `server\server.js`; REST under `server\routes`; event handlers in `server\socket\socketHandler.js`. |
 | Auth/access | bcrypt, signed access JWTs, rotating HttpOnly refresh cookie and sessions; optional Google OAuth flow; room-scoped tickets and room middleware. Each operation still needs a security test. |
 | Persistence | Mongoose plus optional MongoDB; in-memory store fallback; browser IndexedDB. In-memory success is not evidence of Atlas durability. |
-| External services | Optional Gemini API, Google OAuth config, browser-provided speech recognition. No Redis dependency/config was found in `package.json`/`.env.example`. |
-| Tests/tooling | `node:test` tests in `test\`; `npm run check` checks selected backend files and builds Vite. No lint script is declared. |
+| External services | Optional Gemini API, Google OAuth config, browser-provided speech recognition. Redis-related packages (`ioredis`, BullMQ, and the Socket.IO Redis adapter) are dependencies; actual deployment configuration and service availability are not established by package presence. |
+| Tests/tooling | `node:test` tests in `test\`; `npm run check` syntax-checks selected backend/test files and builds Vite; `npm run lint` runs ESLint. |
 
 ## Frontend-to-backend map
 
@@ -51,7 +51,7 @@ See checklist for per-operation IDs, success/failure expectations and current ve
 
 ## Data models found
 
-Mongoose models: `User`, `AuthSession`, `Room`, `Transcript`, `AINote`, `ScheduledMeeting`, `MeetingAgenda`, `MeetingPoll`, `MeetingQuestion`, `BreakoutSession`, `MeetingAttendance`. Process-local maps are in `server\store\memoryMeetingStore.js`; client local data uses IndexedDB. Field constraints, indexes, relationships, retention and live database behavior remain under review.
+Mongoose models: `User`, `AuthSession`, `Room`, `Transcript`, `AINote`, `ScheduledMeeting`, `MeetingAgenda`, `MeetingPoll`, `MeetingQuestion`, `BreakoutSession`, `MeetingAttendance`, and `HiddenMeeting`. Process-local maps are in `server\store\memoryMeetingStore.js`; client local data uses IndexedDB. Field constraints, indexes, relationships, retention and live database behavior remain under review.
 
 ## Security/reliability requirements
 

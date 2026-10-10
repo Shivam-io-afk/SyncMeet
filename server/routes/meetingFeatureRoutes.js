@@ -436,7 +436,7 @@ router.post('/rooms/:roomId/polls/:pollId/votes', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Select at least one valid option to vote' });
   }
   try {
-    const poll = isDbConnected()
+    let poll = isDbConnected()
       ? await MeetingPoll.findOne({ id: req.params.pollId, roomId: req.params.roomId })
       : (roomPolls.get(req.params.roomId) || []).find((item) => item.id === req.params.pollId);
     if (!poll) return res.status(404).json({ success: false, message: 'Poll not found' });
@@ -445,11 +445,61 @@ router.post('/rooms/:roomId/polls/:pollId/votes', async (req, res) => {
       || selectedIds.some((id) => !poll.options.some((option) => String(option.id) === id))) {
       return res.status(400).json({ success: false, message: 'Selected options are not valid for this poll' });
     }
-    poll.options.forEach((option) => {
-      option.voters = option.voters.filter((id) => id !== voterId);
-      if (selectedIds.includes(String(option.id))) option.voters.push(voterId);
-    });
-    if (isDbConnected()) await poll.save();
+    if (isDbConnected()) {
+      poll = await MeetingPoll.findOneAndUpdate(
+        { id: req.params.pollId, roomId: req.params.roomId, status: 'open' },
+        [{
+          $set: {
+            options: {
+              $map: {
+                input: { $ifNull: ['$options', []] },
+                as: 'option',
+                in: {
+                  $mergeObjects: [
+                    '$$option',
+                    {
+                      voters: {
+                        $let: {
+                          vars: {
+                            voters: {
+                              $filter: {
+                                input: { $ifNull: ['$$option.voters', []] },
+                                as: 'voter',
+                                cond: { $ne: ['$$voter', { $literal: voterId }] },
+                              },
+                            },
+                          },
+                          in: {
+                            $cond: [
+                              { $in: ['$$option.id', { $literal: selectedIds }] },
+                              { $concatArrays: ['$$voters', [{ $literal: voterId }]] },
+                              '$$voters',
+                            ],
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }],
+        { returnDocument: 'after', updatePipeline: true }
+      );
+      if (!poll) {
+        const currentPoll = await MeetingPoll.findOne({ id: req.params.pollId, roomId: req.params.roomId })
+          .select('status')
+          .lean();
+        if (!currentPoll) return res.status(404).json({ success: false, message: 'Poll not found' });
+        return res.status(409).json({ success: false, message: 'This poll is closed' });
+      }
+    } else {
+      poll.options.forEach((option) => {
+        option.voters = option.voters.filter((id) => id !== voterId);
+        if (selectedIds.includes(String(option.id))) option.voters.push(voterId);
+      });
+    }
     return res.json({ success: true, poll });
   } catch (error) {
     console.error('Record meeting poll vote error:', error);
@@ -526,15 +576,44 @@ router.post('/rooms/:roomId/questions/:questionId/upvote', async (req, res) => {
   const voterId = req.roomAccess.participantId;
   if (!voterId) return res.status(400).json({ success: false, message: 'A participant ID is required to upvote' });
   try {
-    const question = isDbConnected()
-      ? await MeetingQuestion.findOne({ id: req.params.questionId, roomId: req.params.roomId })
-      : (roomQuestions.get(req.params.roomId) || []).find((item) => item.id === req.params.questionId);
+    let question;
+    if (isDbConnected()) {
+      question = await MeetingQuestion.findOneAndUpdate(
+        { id: req.params.questionId, roomId: req.params.roomId },
+        [{
+          $set: {
+            upvoterIds: {
+              $let: {
+                vars: { voters: { $ifNull: ['$upvoterIds', []] } },
+                in: {
+                  $cond: [
+                    { $in: [{ $literal: voterId }, '$$voters'] },
+                    {
+                      $filter: {
+                        input: '$$voters',
+                        as: 'voter',
+                        cond: { $ne: ['$$voter', { $literal: voterId }] },
+                      },
+                    },
+                    { $concatArrays: ['$$voters', [{ $literal: voterId }]] },
+                  ],
+                },
+              },
+            },
+          },
+        }],
+        { returnDocument: 'after', updatePipeline: true }
+      );
+    } else {
+      question = (roomQuestions.get(req.params.roomId) || []).find((item) => item.id === req.params.questionId);
+    }
     if (!question) return res.status(404).json({ success: false, message: 'Question not found' });
-    const hasUpvoted = question.upvoterIds.includes(voterId);
-    question.upvoterIds = hasUpvoted
-      ? question.upvoterIds.filter((id) => id !== voterId)
-      : [...question.upvoterIds, voterId];
-    if (isDbConnected()) await question.save();
+    if (!isDbConnected()) {
+      const hasUpvoted = question.upvoterIds.includes(voterId);
+      question.upvoterIds = hasUpvoted
+        ? question.upvoterIds.filter((id) => id !== voterId)
+        : [...question.upvoterIds, voterId];
+    }
     return res.json({ success: true, question });
   } catch (error) {
     console.error('Upvote meeting question error:', error);
@@ -646,6 +725,9 @@ router.post('/rooms/:roomId/breakouts', requireRoomHost, async (req, res) => {
       : (breakoutSessions.set(req.params.roomId, [breakout, ...(breakoutSessions.get(req.params.roomId) || [])]), breakout);
     return res.status(201).json({ success: true, breakout: saved });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: 'A breakout session is already active' });
+    }
     console.error('Create breakout session error:', error);
     return res.status(500).json({ success: false, message: 'Could not start breakout rooms' });
   }

@@ -9,19 +9,39 @@ const ThemeContext = createContext({
 
 const THEME_STORAGE_KEY = 'syncmeet_theme';
 
+function getSystemTheme() {
+  if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+  return 'light';
+}
+
+function readStoredTheme() {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'dark' || stored === 'light') return stored;
+
+    const legacyStored = sessionStorage.getItem(THEME_STORAGE_KEY);
+    if (legacyStored === 'dark' || legacyStored === 'light') {
+      localStorage.setItem(THEME_STORAGE_KEY, legacyStored);
+      return legacyStored;
+    }
+  } catch {
+    // Ignore storage access errors
+  }
+  return null;
+}
+
+function storeTheme(theme) {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // Ignore storage access errors
+  }
+}
+
 export function ThemeProvider({ children }) {
-  const [theme, setThemeState] = useState(() => {
-    try {
-      const stored = sessionStorage.getItem(THEME_STORAGE_KEY);
-      if (stored === 'dark' || stored === 'light') return stored;
-    } catch {
-      // Ignore sessionStorage access errors
-    }
-    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    return 'light';
-  });
+  const [theme, setThemeState] = useState(() => readStoredTheme() || getSystemTheme());
 
   const isDark = theme === 'dark';
 
@@ -36,19 +56,41 @@ export function ThemeProvider({ children }) {
       root.setAttribute('data-theme', 'light');
       root.style.colorScheme = 'light';
     }
-    try {
-      sessionStorage.setItem(THEME_STORAGE_KEY, theme);
-    } catch {
-      // Ignore sessionStorage access errors
-    }
   }, [theme, isDark]);
 
-  const toggleTheme = useCallback(() => {
-    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  useEffect(() => {
+    const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+    if (!media) return undefined;
+
+    const handleSystemThemeChange = (event) => {
+      if (!readStoredTheme()) setThemeState(event.matches ? 'dark' : 'light');
+    };
+    media.addEventListener?.('change', handleSystemThemeChange);
+    return () => media.removeEventListener?.('change', handleSystemThemeChange);
   }, []);
+
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key !== THEME_STORAGE_KEY) return;
+      if (event.newValue === 'dark' || event.newValue === 'light') {
+        setThemeState(event.newValue);
+      } else {
+        setThemeState(getSystemTheme());
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    const nextTheme = isDark ? 'light' : 'dark';
+    storeTheme(nextTheme);
+    setThemeState(nextTheme);
+  }, [isDark]);
 
   const setTheme = useCallback((newTheme) => {
     if (newTheme === 'dark' || newTheme === 'light') {
+      storeTheme(newTheme);
       setThemeState(newTheme);
     }
   }, []);
@@ -74,4 +116,3 @@ export function useTheme() {
   }
   return context;
 }
-

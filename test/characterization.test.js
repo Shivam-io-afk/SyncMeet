@@ -131,7 +131,7 @@ test('Characterization: Room Creation, Guest Join, and Leave Flow', async () => 
     // 1. Create an instant guest room
     const createRes = await apiRequest(server.baseUrl, '/api/rooms/guest', {
       method: 'POST',
-      body: { title: 'Characterization Room', hostName: 'Host Moderator' },
+      body: { title: 'Characterization Room', hostName: 'Host Moderator', isLocked: false },
     });
     assert.equal(createRes.status, 201, 'Guest room creation should return 201');
     assert.equal(createRes.data.success, true);

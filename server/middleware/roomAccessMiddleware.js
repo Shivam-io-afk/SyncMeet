@@ -61,7 +61,9 @@ export async function requireRoomAccess(req, res, next, { allowEnded = false } =
     let room;
     let scheduled;
     if (isDbConnected()) {
-      room = await Room.findOne({ roomId }).select('isActive isLocked admittedParticipantIds').lean();
+      room = await Room.findOne({ roomId })
+        .select('isActive isLocked admittedParticipantIds participants.userId')
+        .lean();
       if (!room || !room.isLocked) {
         scheduled = await ScheduledMeeting.findOne({ roomId }).select('status invitees').lean();
       }
@@ -80,8 +82,16 @@ export async function requireRoomAccess(req, res, next, { allowEnded = false } =
     // A valid room ticket remains usable when process-local room metadata was lost on restart.
     // Tickets cannot be minted by clients, and persisted inactive rooms are rejected above.
     const admitted = room?.admittedParticipantIds?.includes(access.participantId);
+    const previouslyJoined = room?.participants?.some(
+      (participant) => String(participant.userId) === access.participantId
+    );
     const scheduledMeetingIsPrivate = Boolean(scheduled?.invitees?.length);
-    if ((room?.isLocked || scheduledMeetingIsPrivate) && access.role !== 'host' && !admitted) {
+    if (
+      (room?.isLocked || scheduledMeetingIsPrivate)
+      && access.role !== 'host'
+      && !admitted
+      && !previouslyJoined
+    ) {
       return res.status(403).json({ success: false, message: 'This room is locked; host admission is required' });
     }
   } catch (error) {

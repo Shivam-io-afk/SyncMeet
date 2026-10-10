@@ -6,7 +6,7 @@ Record only reproduced defects. Unverified risks remain in the checklist until d
 |---|---|---|---|---|---|---|---|---|---|---|
 | BUG-001 | AI-005 / SEC-002 | Medium | Before fix, POST a valid transcript to `/api/ai/summarize` without a room ticket; existing test showed the request reached the mocked Gemini provider. | Only a participant/host with a matching room ticket can invoke provider-backed AI for that room; cross-room tickets fail. | Previously public summarize/ask routes could relay anonymous requests to the configured Gemini provider and consume quota. | AI routes lacked room ID scope and `requireRoomAccess`; client helpers submitted no room ID. | `server/routes/aiRoutes.js`, `src/services/apiService.js`, `src/services/geminiService.js`, `src/components/sidebar/AIAssistantChat.jsx`, `src/components/sidebar/SidebarContainer.jsx`, `src/App.jsx`, `test/meetingFeatures.test.js` | Added `/rooms/:roomId/summarize` and `/rooms/:roomId/ask` guarded by `requireRoomAccess`; passed the scoped room ID and stored ticket from both frontend flows. | Focused integration test passes: anonymous and cross-room summary receive 401 without provider use; anonymous ask receives 401; valid participant ticket works for summary and ask; validation and malformed provider failure remain intact. | FIXED |
 | BUG-002 | UI-002 / ROOM-005 | Medium | With a room locked, open its link in a page with a cached participant room ticket and select Enter. | A participant must see the waiting lobby and request host admission. | Before fix, the client skipped the join endpoint when any cached room ticket existed, opened the meeting UI, and then received 403s for locked-room feature requests. | `handleJoinRoom` trusted a cached non-host ticket and never refreshed server-derived `requiresAdmission`. | `src/App.jsx` | Revalidate cached non-host access through `joinMeetingRoom` so the current server admission state is applied before entering the meeting. | Browser re-test displayed “Asking to be let in…”; host saw the knock, Admit joined the guest, and Deny returned the guest to the lobby. | FIXED |
-| BUG-003 | UI-004 / ROOM-005 | Medium | Lock a room, reload the host page, then open Host Controls. | The host sees the authoritative current room-lock state after reconnecting. | The existing browser page showed “Meeting is open” while a fresh guest was routed to admission. | Lock state defaulted to false and the server did not send current lock state on socket join; join was also emitted before App event subscriptions were registered. | `src/App.jsx`, `server/socket/socketHandler.js`, `test/meetingFeatures.test.js` | Register App listeners before joining; emit current lock state to the joining socket after successful room membership. | Integration test asserts a host joining a locked room receives `{ isLocked: true }`; full suite/build pass. Browser recheck against a restarted backend is still needed because the QA backend process predated this server-side change. | FIXED (automated; live backend recheck pending) |
+| BUG-003 | UI-004 / ROOM-005 | Medium | Lock a room, reload the host page, then open Host Controls. | The host sees the authoritative current room-lock state after reconnecting. | Before fix, the browser showed “Meeting is open” while a fresh guest was routed to admission. | Lock state defaulted to false and the server did not send current lock state on socket join; join was also emitted before App event subscriptions were registered. | `src/App.jsx`, `server/socket/socketHandler.js`, `test/meetingFeatures.test.js` | Register App listeners before joining; emit current lock state to the joining socket after successful room membership. | Integration test asserts a host joining a locked room receives `{ isLocked: true }`; browser host controls now display “Meeting is locked” after guest refresh; full suite/build pass. | FIXED |
 
 ## Not bugs by themselves
 
@@ -123,4 +123,63 @@ Attendance persistence failures are now non-fatal. Regression test 'a reloaded p
 - **Regression evidence:** Added automated test `in-room chat buffer stores sent messages and emits room-chat-history to newly joining participants` in `test/storageAndDbBridge.test.js`. 18/18 tests passing.
 - **Status:** FIXED.
 
+## BUG-019 - Dark-mode choice was limited to a tab and flashed dark on startup
+- **Reproduction/evidence:** Clicked the login-page theme button and guest account-menu switch. The UI toggle did switch `data-theme`, body colors, and both controls; however, the implementation stored the preference only in `sessionStorage`, and `index.html` hard-coded the document as dark before React mounted.
+- **Root cause:** A tab-scoped preference and static dark initial markup did not preserve a deliberate choice across browser sessions or align first paint with the selected/system theme.
+- **Fix:** Persist explicit choices in `localStorage` (migrating a valid existing session preference), initialize the document theme synchronously before paint using the saved preference or system setting, and remove the hard-coded dark root/body colors. Added cross-tab storage synchronization and system-preference updates when no saved choice exists.
+- **Regression evidence:** Clicked dark and light modes in the browser; confirmed root class, `data-theme`, computed body background and local preference; reloaded in each mode and confirmed the selected theme remained. Guest-menu switch and header switch stayed synchronized. `npm run check` passed.
+- **Status:** FIXED; browser click/reload verified.
 
+## BUG-020 - React meeting-effect cleanup treated reruns as permanent leave
+- **Reproduction/evidence:** A guest already admitted to a locked room refreshed/re-entered through session restoration. Before the lifecycle fix, a meeting effect rerun could emit `leave-room`, deleting the participant membership required for locked-room rejoin.
+- **Root cause:** `leaveRoom()` was called by a React effect cleanup that also runs when effect dependencies change, not only when a user intentionally leaves the meeting.
+- **Fix:** Effect cleanup now only removes event listeners. Explicit meeting completion performs the permanent room leave. The socket join guard also retains its joined-socket identity when room, token, participant, and parent-room identity are unchanged.
+- **Regression evidence:** Static regression asserts cleanup does not call `leaveRoom()` while explicit finish does. Browser verification on 2026-10-09: with the room locked, a previously admitted guest refreshed and returned with both participants present; both video elements were 640×480 with live audio/video tracks. Confirmed “Yes, Leave” returned the guest to setup; reusing the same room while locked produced a host knock, host denial returned the guest to setup, and the old ticket’s room-state request returned 403. `npm test` passed 36/36 and `npm run check` passed.
+- **Verification limit:** The exact sequence was verified against the local app/API, not as a separate Atlas persistence assertion. TURN/cross-network behavior is not covered.
+- **Status:** FIXED; browser lifecycle verified.
+
+## BUG-021 - Expected schedule metadata miss logged as an API warning on room-code join
+- **Reproduction/evidence:** Entering an unscheduled room code triggers an optional schedule metadata lookup. The endpoint correctly returned 404 “Scheduled meeting not found”, but `ApiService.request` logged it as a warning before the lobby continued with the actual room join.
+- **Root cause:** The shared request logger treated this optional metadata lookup’s expected 404 like an operational API failure.
+- **Fix:** Preserve the 404 rejection and response semantics, but allow `getScheduledMeeting` to suppress only the API-service warning for HTTP 404. Other status and network errors continue to log; the room join remains authoritative.
+- **Regression evidence:** Browser test with route interception returned the expected schedule 404 and an unknown-room join 404. No schedule API warning was logged; the join failure remained visible in the lobby. `npm run check` and full suite 38/38 pass.
+- **Verification limit:** The API process was unavailable during this follow-up, so this specific UI test used intercepted responses; no live route status was re-queried.
+- **Status:** FIXED IN SOURCE; live API recheck pending.
+
+## BUG-022 - Temporary disconnect was reported as connected in persisted room state
+- **Reproduction/evidence:** In a disposable Mongo-backed room, a socket disconnect correctly left one participant row and cleared its socket ID, but the row had no `isDisconnected` property. `GET /api/rooms/:roomId/state` consequently reported `isDisconnected: false`. The same omission was reproduced in the in-memory disconnect path.
+- **Root cause:** `persistParticipantState` omitted the supplied disconnect flag, the Room participant schema did not declare it, and the state response treated a missing flag as connected.
+- **Fix:** Persist `isDisconnected` in both store paths, declare it in the participant schema, and infer disconnect from a missing socket ID when reading legacy participant rows.
+- **Regression evidence:** The rejoin test now checks disconnected state in the room store and state API, then verifies the flag clears after rejoin. A disposable real-Mongo harness verified active join, disconnect, room-state response, rejoin without duplication, and explicit leave cleanup. `npm test` passed 39/39 and `npm run check` passed.
+- **Status:** FIXED; memory and disposable Mongo paths verified.
+
+## BUG-023 - Concurrent Mongo poll votes failed with document version conflicts
+- **Reproduction/evidence:** A disposable Mongo room received 24 simultaneous distinct poll votes; only 3 returned 200, while 21 returned 500 with Mongoose `VersionError` from concurrent document saves.
+- **Root cause:** Poll voting loaded a Mongoose document, mutated its options in memory, and called `save()`. Concurrent requests raced on the same document version. Question upvotes used the same read-modify-save pattern and were vulnerable to lost updates.
+- **Fix:** Apply Mongo aggregation-pipeline updates atomically for poll voting and question upvote toggling. Poll votes condition on the poll remaining open, remove the voter's old choice(s), and add the voter to selected options. Question upvotes atomically toggle the participant ID.
+- **Regression evidence:** Against a disposable Mongo room, 24/24 simultaneous distinct poll votes and 24/24 simultaneous distinct question upvotes returned 200 and persisted exactly once; two concurrent toggles by the same participant did not create duplicate upvotes. `npm test` passed 39/39 and `npm run check` passed.
+- **Cleanup:** Removed only the generated room, poll and question. No existing meeting data was queried or altered.
+- **Status:** FIXED; disposable Mongo concurrency verified.
+
+## BUG-024 - Unverified GitHub/Microsoft profiles created sessions in development
+- **Reproduction/evidence:** With `NODE_ENV=development`, `POST /api/auth/github` accepted a caller-supplied email/name/provider ID and returned HTTP 200 with a session. The routes skipped their production-only rejection and passed unverified request fields to account/session creation.
+- **Root cause:** GitHub and Microsoft callback routes were demo implementations that treated client-provided profile fields as verified identity outside production.
+- **Fix:** Replace both handlers with explicit HTTP 501 responses until real provider-side OAuth flows exist; keep OTP's separate development behavior unchanged.
+- **Regression evidence:** The auth lifecycle test sets development mode and asserts both endpoints return 501, `success: false`, and no cookie. Targeted test passed; full suite passed 40/40.
+- **Status:** FIXED; not-yet-implemented providers fail closed in every environment.
+
+## BUG-025 - Closed Google OAuth popup left sign-in loading until timeout
+- **Reproduction/evidence:** The callback page closes itself after posting a result, but the parent flow only had a three-minute timeout and did not observe popup closure. If the response could not be delivered, the login UI remained in its connecting state while the closed popup could not make further progress. A browser test now exercises the closed-without-response path.
+- **Root cause:** No popup-closure observation or prompt error path existed in `signInWithGoogle`.
+- **Fix:** Poll popup closure with a 1.5-second grace period; if no callback arrives, reject with a clear user-facing error and clean up listeners, timers and channel.
+- **Regression evidence:** Chromium E2E test passed: a popup that closes without a response produces the visible error and re-enables the Google button. `npm test` passed 40/40 and `npm run check` passed.
+- **Verification limit:** A successful live Google account/provider callback was not run; local callback URL and frontend-origin values were checked without exposing secrets.
+- **Status:** FIXED; popup-close failure path browser-verified, external Google flow still unverified.
+
+## BUG-026 - Concurrent breakout creation could persist multiple active sessions
+- **Reproduction/evidence:** Before the fix, 12 simultaneous create requests against one disposable Mongo room produced six HTTP 201 responses and six 409 responses, leaving six active breakout documents.
+- **Root cause:** The Mongo route used a check-then-insert sequence (`findOne` followed by `create`) without a database uniqueness constraint, so concurrent requests could all pass the check.
+- **Fix:** Add a partial unique index on `{ roomId, status }` for active records, ensure that index at Mongo startup, and map duplicate-key insert races to the existing HTTP 409 conflict response. If legacy duplicate active rows prevent index creation, Mongo startup disconnects and fails readiness rather than proceeding without the invariant.
+- **Regression evidence:** `test/breakoutConcurrency.test.js` now asserts 12 simultaneous requests yield one 201 and eleven 409 responses with exactly one active row. A second disposable-Mongo test seeds two duplicate active rows, verifies startup returns false/disconnected, and confirms both rows remain unchanged. Full suite passed 44/44; `npm run check` passed; targeted ESLint passed.
+- **Data safety:** Tests used fresh `mongodb-memory-server` instances and did not query or modify Atlas/shared meeting data.
+- **Status:** FIXED; disposable Mongo concurrency and startup-failure paths verified.

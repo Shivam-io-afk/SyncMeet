@@ -18,6 +18,7 @@ export function useMediaDevices() {
   const isAcquiringRef = useRef(false);
   const isMountedRef = useRef(false);
   const streamRequestIdRef = useRef(0);
+  const isStartingScreenShareRef = useRef(false);
 
   useEffect(() => {
     stream?.getAudioTracks().forEach((track) => { track.enabled = !isAudioMuted; });
@@ -222,41 +223,61 @@ export function useMediaDevices() {
     setIsVideoDisabled(disabled);
   }, []);
 
-  // Toggle Screen Sharing
-  const toggleScreenShare = useCallback(async () => {
-    if (isScreenSharing) {
-      if (screenStreamRef.current) {
-        screenStreamRef.current.getTracks().forEach(track => track.stop());
-        screenStreamRef.current = null;
-      }
+  const stopScreenShare = useCallback(() => {
+    const displayStream = screenStreamRef.current;
+    screenStreamRef.current = null;
+    if (isMountedRef.current) {
       setScreenStream(null);
       setIsScreenSharing(false);
-    } else {
-      try {
-        const displayStream = await navigator.mediaDevices.getDisplayMedia({
-          video: { cursor: 'always' },
-          audio: true,
-        });
-        if (!isMountedRef.current) {
-          displayStream.getTracks().forEach(track => track.stop());
-          return;
-        }
-
-        screenStreamRef.current = displayStream;
-        setScreenStream(displayStream);
-        setIsScreenSharing(true);
-
-        displayStream.getVideoTracks()[0].onended = () => {
-          if (!isMountedRef.current) return;
-          setIsScreenSharing(false);
-          setScreenStream(null);
-          screenStreamRef.current = null;
-        };
-      } catch (err) {
-        console.warn('Screen share canceled or denied:', err);
-      }
     }
-  }, [isScreenSharing]);
+    displayStream?.getTracks().forEach((track) => {
+      if (track.readyState !== 'ended') track.stop();
+    });
+  }, []);
+
+  // Toggle Screen Sharing
+  const toggleScreenShare = useCallback(async () => {
+    if (screenStreamRef.current) {
+      stopScreenShare();
+      return;
+    }
+    if (isStartingScreenShareRef.current) return;
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      console.warn('Screen sharing is not supported by this browser.');
+      return;
+    }
+
+    isStartingScreenShareRef.current = true;
+    try {
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'always' },
+        audio: true,
+      });
+      if (!isMountedRef.current) {
+        displayStream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      const videoTrack = displayStream.getVideoTracks()[0];
+      if (!videoTrack) {
+        displayStream.getTracks().forEach((track) => track.stop());
+        throw new Error('The selected display did not provide a video track.');
+      }
+
+      screenStreamRef.current = displayStream;
+      setScreenStream(displayStream);
+      setIsScreenSharing(true);
+      videoTrack.addEventListener('ended', () => {
+        if (screenStreamRef.current === displayStream) stopScreenShare();
+      }, { once: true });
+    } catch (err) {
+      if (err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
+        console.warn('Could not start screen sharing:', err);
+      }
+    } finally {
+      isStartingScreenShareRef.current = false;
+    }
+  }, [stopScreenShare]);
 
   // Switch Audio Device
   const switchAudioDevice = useCallback((deviceId) => {

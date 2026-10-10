@@ -147,11 +147,14 @@ class CryptoAuthService {
 
     return new Promise((resolve, reject) => {
       let timeoutTimer;
+      let popupCloseTimer;
+      let popupClosedAt = null;
       let channel = null;
       try { channel = new BroadcastChannel('syncmeet-google-auth'); } catch { /* unsupported */ }
       const cleanup = () => {
         window.removeEventListener('message', handleMessage);
         window.clearTimeout(timeoutTimer);
+        window.clearInterval(popupCloseTimer);
         if (channel) channel.close();
       };
       const handleData = (data) => {
@@ -196,6 +199,17 @@ class CryptoAuthService {
 
       window.addEventListener('message', handleMessage);
       if (channel) channel.onmessage = (event) => handleData(event.data);
+      popupCloseTimer = window.setInterval(() => {
+        if (!popup.closed) {
+          popupClosedAt = null;
+          return;
+        }
+        if (popupClosedAt === null) popupClosedAt = Date.now();
+        if (Date.now() - popupClosedAt >= 1500) {
+          cleanup();
+          reject(new Error('Google sign-in window closed before returning to SyncMeet. Please try again.'));
+        }
+      }, 500);
       timeoutTimer = window.setTimeout(() => {
         cleanup();
         reject(new Error('Google sign-in timed out. Please try again.'));

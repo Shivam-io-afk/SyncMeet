@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366F1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polygon points='23 7 16 12 23 17 23 7'></polygon><rect x='1' y='5' width='15' height='14' rx='2' ry='2'></rect></svg>" />
@@ -7,9 +7,31 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      (() => {
+        let theme = null;
+        try {
+          theme = localStorage.getItem('syncmeet_theme');
+          if (theme !== 'dark' && theme !== 'light') {
+            theme = sessionStorage.getItem('syncmeet_theme');
+            if (theme === 'dark' || theme === 'light') {
+              localStorage.setItem('syncmeet_theme', theme);
+            }
+          }
+        } catch {
+          theme = null;
+        }
+        if (theme !== 'dark' && theme !== 'light') {
+          theme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
     <title>SyncMeet AI — Real-Time Video Meetings & AI Notes</title>
   </head>
-  <body class="bg-[#0A0D14] text-gray-100 min-h-screen overflow-hidden antialiased selection:bg-indigo-500/30 selection:text-indigo-200">
+  <body class="min-h-screen overflow-hidden antialiased selection:bg-indigo-500/30 selection:text-indigo-200">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

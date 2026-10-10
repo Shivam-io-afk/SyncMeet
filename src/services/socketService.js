@@ -58,16 +58,34 @@ class SocketService {
   }
 
   joinRoom(roomId, user, roomAccessToken) {
+    const membershipChanged = this.roomId !== roomId
+      || this.roomAccessToken !== roomAccessToken
+      || this.roomUser?.id !== user?.id
+      || this.roomUser?.name !== user?.name
+      || this.roomUser?.parentRoomId !== user?.parentRoomId;
     this.roomId = roomId;
     this.roomUser = user;
     this.roomAccessToken = roomAccessToken;
-    this.joinedSocketId = null;
+    if (membershipChanged) this.joinedSocketId = null;
     this.connect();
     this.emitJoinRoom();
   }
 
   updateMediaState(mediaState) {
     this.socket?.emit('update-media-state', mediaState);
+  }
+
+  sendScreenShareState(isScreenSharing) {
+    if (typeof isScreenSharing !== 'boolean') return;
+    if (this.roomUser) this.roomUser = { ...this.roomUser, isScreenSharing };
+    this.socket?.emit('screen-share-state', { isScreenSharing });
+  }
+
+  resendScreenShareState() {
+    const isScreenSharing = this.roomUser?.isScreenSharing;
+    if (typeof isScreenSharing === 'boolean') {
+      this.socket?.emit('screen-share-state', { isScreenSharing });
+    }
   }
 
   emitJoinRoom() {

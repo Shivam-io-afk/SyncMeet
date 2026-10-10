@@ -157,6 +157,7 @@ This document defines the strict API, Socket.IO, and Database contract between t
   {
     "roomId": "room-uuid-or-custom",
     "title": "Architecture Review",
+    "isLocked": true,
     "settings": {
       "isMutedOnEntry": false,
       "isVideoOffOnEntry": false,
@@ -174,7 +175,7 @@ This document defines the strict API, Socket.IO, and Database contract between t
       "title": "Architecture Review",
       "hostId": "67a9...",
       "hostName": "Alex Chen",
-      "isLocked": false,
+      "isLocked": true,
       "settings": { ... },
       "createdAt": "2026-10-09T06:00:00.000Z"
     },
@@ -189,7 +190,8 @@ This document defines the strict API, Socket.IO, and Database contract between t
   ```json
   {
     "title": "Ad-Hoc Discussion",
-    "hostName": "Guest Host"
+    "hostName": "Guest Host",
+    "isLocked": true
   }
   ```
 - **Success Response (201 Created)**:
@@ -200,11 +202,13 @@ This document defines the strict API, Socket.IO, and Database contract between t
       "roomId": "room-generated-uuid",
       "title": "Ad-Hoc Discussion",
       "hostName": "Guest Host",
-      "isLocked": false
+      "isLocked": true
     },
     "accessToken": "signed-room-token-with-role-host"
   }
   ```
+
+`isLocked` is optional on both create endpoints and defaults to `true`. A participant joining a locked room receives `requiresAdmission: true` and must be admitted by the host; the host can unlock the room from Host controls.
 
 #### `POST /api/rooms/:roomId/join`
 

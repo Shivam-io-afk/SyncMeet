@@ -1,8 +1,20 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import { BreakoutSession } from '../models/BreakoutSession.js';
 dotenv.config();
 
 let connectionAttempt;
+
+export async function ensureBreakoutSessionIndexes() {
+  await BreakoutSession.collection.createIndex(
+    { roomId: 1, status: 1 },
+    {
+      name: 'roomId_1_status_1_active_unique',
+      unique: true,
+      partialFilterExpression: { status: 'active' },
+    }
+  );
+}
 
 export async function connectDB() {
   const uri = process.env.MONGODB_URI;
@@ -20,15 +32,26 @@ export async function connectDB() {
     maxPoolSize: 10,
     minPoolSize: 0,
     serverSelectionTimeoutMS: 5000,
-  }).then((conn) => {
+  }).then(async (conn) => {
     console.info('MongoDB connected', {
       host: conn.connection.host,
       database: conn.connection.name,
     });
-    return dropLegacyAttendanceIndex().then(() => true);
-  }).catch((error) => {
-    console.warn('MongoDB connection unavailable; using the in-memory development store.', {
+    await dropLegacyAttendanceIndex();
+    await ensureBreakoutSessionIndexes();
+    return true;
+  }).catch(async (error) => {
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect().catch((disconnectError) => {
+        console.warn('Could not close MongoDB after startup validation failed', {
+          error: disconnectError.name,
+        });
+      });
+    }
+    console.warn('MongoDB connection or required index validation failed.', {
       error: error.name,
+      code: error.code,
+      codeName: error.codeName,
     });
     return false;
   }).finally(() => {

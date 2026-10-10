@@ -52,14 +52,14 @@
 - **Problem:** Account history needs persisted transcripts and notes even when the user is no longer in the meeting or is on another device; room tickets alone are not an account-level archive credential.
 - **Choice:** Keep room-ticket archive access for guests, and add a separately protected account endpoint that checks host ownership, attendee IDs, or a persisted attendance record before returning archive details.
 - **Reason/trade-off:** Account archive access remains usable across devices without weakening the room-scoped ticket route or exposing room internals.
-- **Verification boundary:** In-memory integration verifies host/attendee access, anonymous 401, unrelated-account 404, and a safe response shape. Mongo and real browser flows remain unverified.
+- **Verification boundary:** In-memory integration verifies host/attendee access, anonymous 401, unrelated-account 404, and a safe response shape. Mongo and real browser archive flows remain unverified.
 
-## DEC-009 — Complete eradication of localStorage in favor of sessionStorage & backend MongoDB synchronization
+## DEC-009 — Keep authentication and meeting-session data out of localStorage
 
 - **Problem:** Storing auth tokens, room tickets, active meeting state, and usernames in browser `localStorage` caused token leakage across browser sessions, stale ticket races, and drift from the server's authoritative database state.
-- **Choice:** Remove all `localStorage` usage across `src/` and `server/`. Use `sessionStorage` strictly for temporary, tab-scoped session memory (JWT access tokens, room admission tickets, and in-flight meeting state). Rely on MongoDB Atlas (via `/api/auth/me`, `/api/history`, `/api/features`) as the primary source of truth, backed by a static regression assertion test in `test/storageAndDbBridge.test.js`.
-- **Reason/trade-off:** Protects user sessions from persisting unexpectedly across sessions, aligns with security best practices, and ensures all meeting records and profile information roundtrip through the backend database.
-- **Verification boundary:** Automated static audit in `test/storageAndDbBridge.test.js` enforces zero `localStorage` across `src/`. Full test suite 16/16 and build checks pass.
+- **Choice:** Keep JWT access tokens, room admission tickets, active meeting state, and in-flight user session data in `sessionStorage`; permit `localStorage` only for the explicit theme preference in `ThemeContext.jsx`. Use backend APIs as the primary source for account and meeting records, retaining IndexedDB as the client cache.
+- **Reason/trade-off:** Session credentials should not persist across browser sessions. A deliberate display preference is non-sensitive and benefits from persisting across sessions.
+- **Verification boundary:** `test/storageAndDbBridge.test.js` enforces the theme-only exception. Browser testing verified theme choice persistence; backend record durability must be judged from the individual API/DB tests, not inferred from this storage rule.
 
 ## DEC-010: Authenticated Profile Persistence via `PUT /api/auth/profile`
 - **Context:** The frontend `UserProfileModal` allowed users to customize display name, title/role, and avatar color gradient, but changes were only written to client-side session memory.
@@ -73,4 +73,64 @@
 - **Reason/trade-off:** Prevents memory leaks by strictly bounding the buffer size to 100 messages and clearing on meeting termination, while providing a seamless Google Meet-like chat catch-up experience for participants.
 - **Verification boundary:** Automated test in `test/storageAndDbBridge.test.js` asserts that a newly joined socket receives `room-chat-history` with previous messages sent in that room.
 
+## DEC-012 — Separate React listener cleanup from intentional room leave
 
+- **Problem:** A meeting effect cleanup may run during a dependency-driven effect rerun. Treating every cleanup as a permanent leave deletes the server membership needed for an admitted guest to rejoin a locked room after refresh.
+- **Choice:** Effect cleanup only unsubscribes listeners; explicit meeting completion emits the permanent leave. Keep socket join de-duplication tied to the current membership identity.
+- **Reason/trade-off:** Distinguishes transient UI lifecycle/reconnection from the user's explicit leave while retaining the existing room ticket and server admission rules.
+- **Verification boundary:** Regression check, browser locked-room refresh with live peer media, host denial after explicit leave, and stale-ticket 403 all passed locally. The exact path was not separately proven against Atlas or cross-network TURN.
+
+## DEC-013 — Keep expected schedule lookup misses non-noisy without changing 404 semantics
+
+- **Problem:** Room-code entry optionally looks up schedule metadata. An unscheduled room correctly yields 404, but the shared client logger reports that expected miss as an API warning.
+- **Choice:** Suppress the API-service warning only for HTTP 404 from `getScheduledMeeting`; continue to reject the lookup and preserve all other logging and error behavior. The later room join still decides whether the room exists and reports failures to the user.
+- **Reason/trade-off:** Avoids treating an optional metadata miss as an operational warning without weakening the endpoint's not-found semantics or masking genuine room-join errors.
+- **Verification boundary:** Browser test with intercepted 404s confirmed no schedule API warning and a visible join failure. The local API process was unavailable, so live endpoint confirmation remains pending.
+
+## DEC-014 — Persist temporary participant disconnection separately from leave
+
+- **Problem:** A participant row retained after a transient socket loss had `socketId: null`, but the disconnect flag was omitted from persistence and the room-state API reported the participant as connected.
+- **Choice:** Persist `isDisconnected` on participant subdocuments and in the memory store. Treat a missing socket ID as disconnected when serializing older rows that predate the flag.
+- **Reason/trade-off:** Makes temporary disconnect observable without conflating it with intentional leave, which removes the participant row and stamps attendance `leftAt`.
+- **Verification boundary:** In-memory regression and isolated live-Mongo join/disconnect/state/rejoin/leave test passed. The shared API process was not restarted because a separate existing browser page still had an active meeting.
+
+## DEC-015 — Use atomic Mongo updates for concurrent poll votes and question upvotes
+
+- **Problem:** Concurrent poll vote requests loaded the same Mongoose document and raced on `save()`, causing version conflicts and lost requests. Question upvotes shared the read-modify-save race.
+- **Choice:** Use conditional Mongo aggregation-pipeline updates that atomically replace a participant's poll selection or toggle their question upvote; retain the existing in-memory implementation.
+- **Reason/trade-off:** Mongo applies each update against current persisted state, so simultaneous participants do not overwrite one another. Poll voting is conditioned on `status: 'open'` to avoid accepting a vote after closure.
+- **Verification boundary:** A disposable Mongo route harness verified 24 concurrent poll votes, 24 concurrent question upvotes, and duplicate-free concurrent same-user toggling. No production meeting records were touched.
+
+## DEC-016 — Keep unimplemented social providers unavailable in all environments
+
+- **Problem:** Development GitHub/Microsoft handlers trusted profile fields supplied by the caller and created authenticated sessions without contacting either provider.
+- **Choice:** Return an explicit 501 from both endpoints until a verified provider authorization-code flow is implemented. Keep the unrelated OTP development behavior unchanged.
+- **Reason/trade-off:** A clear unsupported response is safer than demo-success that can be mistaken for real authentication.
+- **Verification boundary:** An isolated development-mode repro returned 200 before the change; auth regression tests now confirm both endpoints return 501 without issuing cookies or sessions.
+
+## DEC-017 — Detect Google popup closure before the long OAuth timeout
+
+- **Problem:** If a Google popup closed without delivering its result, the login page remained busy until the three-minute timeout.
+- **Choice:** Observe closure every 500 ms and report failure after a 1.5-second grace period, allowing a just-posted callback message to reach the opener.
+- **Reason/trade-off:** Provides prompt recovery for blocked/misconfigured callbacks while retaining strict postMessage origin/source checks and the existing long allowance for the user to complete Google sign-in.
+- **Verification boundary:** Chromium E2E verified the no-response closure path; a real external Google transaction remains unverified.
+
+## DEC-018 — Keep development CORS permissive only when no allowlist is configured
+
+- **Observation:** With `NODE_ENV=development` and no `CORS_ORIGINS`, the local API reflects arbitrary request origins and allows credentials. In production, the same app emits CORS headers only for an exact configured allowlist match.
+- **Choice:** Preserve the development convenience behavior; require deployment to set `CORS_ORIGINS` and run with `NODE_ENV=production`. Treat development-mode exposure beyond a trusted local environment as unsupported.
+- **Verification boundary:** Live development API behavior and an isolated production-config allow/deny check confirmed the branches; production deployment configuration itself was not inspected.
+
+## DEC-019 — Enforce one active breakout session per room in MongoDB
+
+- **Problem:** The route's active-session lookup followed by insert allowed concurrent create requests to persist multiple active breakouts for the same room.
+- **Choice:** Add a partial unique Mongo index on `{ roomId, status }` where status is `active`, ensure it during database startup, and translate duplicate-key races to the route's 409 conflict response.
+- **Existing-data policy:** Do not auto-delete or rewrite duplicate active records to make the index succeed. Fail database readiness if the constraint cannot be established, preserving the conflicting records for deliberate operator resolution.
+- **Verification boundary:** A disposable MongoDB regression verified the concurrent-write invariant and that startup fails closed while leaving pre-existing duplicate rows intact. No Atlas migration or cleanup was attempted.
+
+## DEC-020 — Default new host-created rooms to locked
+
+- **Problem:** Both room creation routes forced new meetings open, despite existing host lock controls and admission flow.
+- **Choice:** Default new room documents and both creation endpoints to `isLocked: true`; allow an explicit boolean host choice, reject other values, and initialize the host UI from the server-created room state.
+- **Reason/trade-off:** Late arrivals must request admission unless the host explicitly opens the room. Existing rooms are not rewritten; hosts retain live lock/unlock controls.
+- **Verification boundary:** API and socket regressions plus schema-default inspection passed using in-memory fixtures. Mongo-backed create/read persistence and browser-driven first-join behavior remain unverified.

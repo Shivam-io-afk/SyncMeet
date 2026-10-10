@@ -26,6 +26,7 @@ export function MeetingRoom({
   onToggleSidebar,
   isGeneratingNotes = false,
   isListening = false,
+  transcriptionError = '',
   isSpeechSupported = false,
   isTranscriptionEnabled = true,
   onToggleTranscription,
@@ -45,13 +46,14 @@ export function MeetingRoom({
   const [captionsActive, setCaptionsActive] = useState(true);
   const [reactions, setReactions] = useState([]);
 
-  const { remotePeers } = useWebRTC(outboundMediaStream, session);
+  const { remotePeers } = useWebRTC(outboundMediaStream, session, mediaState.isScreenSharing);
   const displayParticipants = remotePeers.map((peer) => ({
     id: peer.user?.id || peer.socketId,
     name: peer.user?.name || 'Participant',
     stream: peer.stream,
     isMuted: peer.isMuted,
     isVideoDisabled: peer.isVideoOff,
+    isScreenSharing: peer.isScreenSharing,
     isSpeaking: false,
     isHandRaised: peer.isHandRaised,
     audioLevel: 0,
@@ -128,6 +130,7 @@ export function MeetingRoom({
         roomId={session.roomId}
         participantCount={displayParticipants.length + 1}
         isTranscribing={isListening}
+        transcriptionError={transcriptionError}
         isSpeechSupported={isSpeechSupported}
         isTranscriptionEnabled={isTranscriptionEnabled}
         isMuted={mediaState.isAudioMuted}
@@ -333,6 +336,7 @@ export function MeetingRoom({
         captionsActive={captionsActive}
         onToggleCaptions={() => setCaptionsActive(!captionsActive)}
         isTranscriptionEnabled={isTranscriptionEnabled}
+        transcriptionError={transcriptionError}
         isSpeechSupported={isSpeechSupported}
         onToggleTranscription={onToggleTranscription}
       />

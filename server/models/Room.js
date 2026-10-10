@@ -22,7 +22,7 @@ const roomSchema = new mongoose.Schema({
   },
   isLocked: {
     type: Boolean,
-    default: false,
+    default: true,
   },
   admittedParticipantIds: {
     type: [String],
@@ -51,6 +51,7 @@ const roomSchema = new mongoose.Schema({
       joinedAt: { type: Date, default: Date.now },
       isMuted: { type: Boolean, default: false },
       isVideoOff: { type: Boolean, default: false },
+      isDisconnected: { type: Boolean, default: false },
     }
   ],
   isActive: {

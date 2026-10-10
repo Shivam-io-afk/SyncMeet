@@ -65,22 +65,58 @@ function findFilesInDir(dir, filter) {
   return results;
 }
 
-test('frontend enforces zero localStorage usage across all src files', () => {
+test('frontend keeps localStorage limited to the explicit theme preference', () => {
   const srcFiles = findFilesInDir('src', (file) => /\.(jsx?|tsx?)$/.test(file));
   assert.ok(srcFiles.length > 0, 'src files should exist');
 
-  const filesWithLocalStorage = [];
+  const filesWithUnexpectedLocalStorage = [];
   for (const file of srcFiles) {
     const content = readFileSync(file, 'utf-8');
-    if (content.includes('localStorage')) {
-      filesWithLocalStorage.push(file);
+    const isThemeContext = file.split(/[\\/]/).slice(-3).join('/') === 'src/context/ThemeContext.jsx';
+    if (content.includes('localStorage') && !isThemeContext) {
+      filesWithUnexpectedLocalStorage.push(file);
     }
   }
 
   assert.deepEqual(
-    filesWithLocalStorage,
+    filesWithUnexpectedLocalStorage,
     [],
-    `Found localStorage in: ${filesWithLocalStorage.join(', ')}. Policy strictly requires sessionStorage / database sync only.`
+    `Found localStorage outside the theme preference: ${filesWithUnexpectedLocalStorage.join(', ')}.`
+  );
+
+  const themeContextPath = srcFiles.find(
+    (file) => file.split(/[\\/]/).slice(-3).join('/') === 'src/context/ThemeContext.jsx'
+  );
+  assert.ok(themeContextPath, 'theme context should exist');
+  const themeContext = readFileSync(themeContextPath, 'utf-8');
+  assert.match(themeContext, /const THEME_STORAGE_KEY = 'syncmeet_theme';/);
+  assert.deepEqual(
+    [...themeContext.matchAll(/localStorage\.(?:getItem|setItem)\(([^)]*)\)/g)].map(([, args]) => args.trim()),
+    ['THEME_STORAGE_KEY', 'THEME_STORAGE_KEY, legacyStored', 'THEME_STORAGE_KEY, theme'],
+    'localStorage access must remain scoped to the explicit theme preference'
+  );
+});
+
+test('meeting effect cleanup preserves reconnect membership while explicit finish leaves', () => {
+  const appSource = readFileSync('src/App.jsx', 'utf-8');
+  const socketEffectStart = appSource.indexOf("socketService.on('room-join-error', handleJoinError);");
+  const socketEffectEnd = appSource.indexOf('}, [session?.roomId', socketEffectStart);
+  assert.notEqual(socketEffectStart, -1, 'meeting socket effect should subscribe to join errors');
+  assert.notEqual(socketEffectEnd, -1, 'meeting socket effect should have a cleanup boundary');
+  assert.doesNotMatch(
+    appSource.slice(socketEffectStart, socketEffectEnd),
+    /socketService\.leaveRoom\(\)/,
+    'React effect cleanup must not convert rehydration or StrictMode reruns into permanent leaves'
+  );
+
+  const finishStart = appSource.indexOf('const finishMeeting = useCallback(async () => {');
+  const finishEnd = appSource.indexOf('}, [clearTranscripts, saveMeetingHistory]);', finishStart);
+  assert.notEqual(finishStart, -1, 'explicit meeting finish handler should exist');
+  assert.notEqual(finishEnd, -1, 'explicit meeting finish handler should have a boundary');
+  assert.match(
+    appSource.slice(finishStart, finishEnd),
+    /socketService\.leaveRoom\(\)/,
+    'intentional leave must still revoke the participant membership'
   );
 });
 
@@ -361,6 +397,4 @@ test('meeting archives are strictly isolated per account and never leak to newly
     await app.close();
   } 
 });
-
-
 

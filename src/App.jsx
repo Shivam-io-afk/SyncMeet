@@ -226,6 +226,7 @@ function AppContent() {
     interimText,
     isListening,
     isSupported: isSpeechSupported,
+    transcriptionError,
     addTranscriptEntry: internalAddTranscript,
     restoreTranscripts,
     clearTranscripts,
@@ -304,6 +305,7 @@ function AppContent() {
   }, []);
 
   const finishMeeting = useCallback(async () => {
+    socketService.leaveRoom();
     try {
       await saveMeetingHistory();
     } catch (e) {
@@ -453,6 +455,7 @@ function AppContent() {
         hostName: meetingSession.userName || joiningUser.name,
       });
       meetingSession = { ...meetingSession, roomId: created.room.roomId, title: created.room.title };
+      setIsRoomLocked(Boolean(created.room.isLocked));
       access = created.access;
     } else if (!access || access.role !== 'host') {
       const joined = await apiService.joinMeetingRoom(meetingSession.roomId, meetingSession.userName || joiningUser.name);
@@ -643,7 +646,6 @@ function AppContent() {
       socketService.off('knock-request', handleKnockRequest);
       socketService.off('breakout-assignment', handleBreakoutAssignment);
       socketService.off('meeting-agenda-updated', handleAgendaUpdate);
-      socketService.leaveRoom();
     };
   }, [session?.roomId, session?.isHost, session?.role, session?.parentRoomId, internalAddTranscript, showLiveCaption, finishMeeting]);
 
@@ -749,9 +751,6 @@ function AppContent() {
 
   // Host Action: Mute all participants
   const handleMuteAll = () => {
-    if (!mediaState.isAudioMuted) {
-      mediaState.toggleAudio();
-    }
     socketService.sendHostMuteAll();
     addTranscriptEntry('Host Moderator', 'All participant microphones were muted by the Host.');
   };
@@ -859,7 +858,6 @@ function AppContent() {
           userMenu={userMenuElement}
           onJoinRoom={handleJoinRoom}
           onOpenHistory={() => setHistoryModalOpen(true)}
-          onOpenAuth={() => setViewMode('login')}
         />
       ) : (
         /* In-meeting workspace stage */
@@ -881,6 +879,7 @@ function AppContent() {
           latestTranscript={latestTranscript}
           latestCaptionSpeaker={isListening && interimText ? currentUser?.name || 'You' : liveCaption?.speaker || ''}
           isListening={isListening}
+          transcriptionError={transcriptionError}
           isSpeechSupported={isSpeechSupported}
           isTranscriptionEnabled={isTranscriptionEnabled}
           onToggleTranscription={() => setIsTranscriptionEnabled((enabled) => !enabled)}
@@ -902,6 +901,7 @@ function AppContent() {
               transcripts={transcripts}
               interimText={interimText}
               isListening={isListening}
+              transcriptionError={transcriptionError}
               onAddTranscript={addTranscriptEntry}
               onClearTranscripts={handleClearTranscripts}
               notesData={notesData}
@@ -924,4 +924,3 @@ export default function App() {
     </ThemeProvider>
   );
 }
-
