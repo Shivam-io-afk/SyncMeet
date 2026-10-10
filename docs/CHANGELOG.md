@@ -7,6 +7,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased] - `backend-improve`
 
+### Card Component Redesign & Visual Hierarchy Alignment
+
+- **Design System & Theme Tokens**:
+  - Configured `sync.*` design tokens in `tailwind.config.js`: Page Background (`#08090B`), Primary Card (`#15171D`), Participant Tile (`#202023`), Primary Text (`#F5F5F5`), Secondary Text (`#A7AFBD`), Accent Green (`#B8F58A`), and subtle border `rgba(255, 255, 255, 0.09)`.
+  - Added organic dark metallic silk wave backdrop via `<BackgroundSilkWaves />` to `DeviceSetup` and `MeetingRoom`.
+- **Hero Video & Participant Cards (`VideoTile.jsx` & `VideoGrid.jsx`)**:
+  - Differentiated Hero Video Card (`isSpotlight=true`): 26–30px rounded corners, thin lime-green border (`#B8F58A`) with soft ambient hover glow, bottom gradient vignette for text legibility, clean white typography display name at bottom-left, and discreet audio indicator.
+  - Redesigned Participant Cards (`isSpotlight=false`): Dark charcoal background (`#202023`), 16–18px rounded corners, muted mic indicator in the top-left, centered avatars or video feeds with `object-cover`, display name along bottom-left, and active speaker border in `#B8F58A`.
+  - Responsive layout in `VideoGrid.jsx` aligning secondary participants into a clean 4:3 ratio row under the spotlight feed.
+- **Meeting Setup Page (`DeviceSetup.jsx`)**:
+  - Updated Welcome/Setup card, tabs, input fields, recent meetings panel, and quick overview card to `#15171D` with subtle borders and `#B8F58A` active accents.
+  - Video preview card upgraded with the hero rounded styling, bottom gradient, and floating liquid control dock.
+- **Meeting Room Layout & Header Bar (`MeetingRoom.jsx` & `HeaderBar.jsx`)**:
+  - Deep `#08090B` stage backdrop with silk waves and responsive toolbar docking.
+  - Header bar and side navigation surfaces aligned to charcoal `#12141A` / `#15171D` surfaces.
+
+### Production Readiness
+
+- **Fixed**:
+  - Removed the missing `public/` directory from the Docker build and exposed Vite's public build settings as build arguments.
+  - Removed the checked-in production JWT secret and publicly exposed unauthenticated MongoDB/Redis services; Compose now requires managed service URLs and secrets and binds the API to loopback by default.
+- **Added**:
+  - CI installs Chromium and runs Playwright against the isolated production build and temporary MongoDB.
+  - `npm run test:e2e:isolated` safely runs the production browser suite without targeting the configured application database.
+
 ### Phase 0: Safety Net
 
 - **Added**:

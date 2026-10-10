@@ -84,7 +84,7 @@ export function ControlDock({
               mediaState.isAudioMuted
                 ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
                 : isSpeaking
-                ? 'bg-[#b9d88d] text-[#262820] border border-[#cce1aa] ring-2 ring-[#b9d88d]/40'
+                ? 'bg-[#B8F58A] text-[#08090B] border border-[#B8F58A] shadow-[0_0_15px_rgba(184,245,138,0.35)]'
                 : 'bg-white/[0.08] hover:bg-white/[0.15] text-white border border-white/[0.06]'
             }`}
             title={mediaState.isAudioMuted ? 'Unmute microphone (Ctrl+D)' : 'Mute microphone (Ctrl+D)'}
@@ -120,7 +120,7 @@ export function ControlDock({
             onClick={mediaState.toggleScreenShare}
             className={`w-11 h-11 md:w-12 md:h-12 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${
               mediaState.isScreenSharing
-                ? 'bg-[#b9d88d] text-[#262820] shadow-lg shadow-[#b9d88d]/20'
+                ? 'bg-[#B8F58A] text-[#08090B] shadow-[0_0_15px_rgba(184,245,138,0.3)]'
                 : 'bg-white/[0.08] hover:bg-white/[0.15] text-gray-300 border border-white/[0.06]'
             }`}
             title={mediaState.isScreenSharing ? 'Stop sharing screen' : 'Share your screen'}
@@ -183,7 +183,7 @@ export function ControlDock({
                 : transcriptionError
                   ? 'bg-red-500/20 text-red-300 border border-red-500/30'
                 : isTranscriptionEnabled
-                  ? 'bg-[#b9d88d] text-[#262820] shadow-lg shadow-[#b9d88d]/20'
+                  ? 'bg-[#B8F58A] text-[#08090B] shadow-[0_0_15px_rgba(184,245,138,0.3)]'
                   : 'bg-white/[0.08] hover:bg-white/[0.15] text-gray-300 border border-white/[0.06]'
             }`}
             title={transcriptionError || (!isSpeechSupported
@@ -201,7 +201,7 @@ export function ControlDock({
             onClick={() => onToggleSidebar('whiteboard')}
             className={`w-11 h-11 md:w-12 md:h-12 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${
               sidebarOpen && activeSidebarTab === 'whiteboard'
-                ? 'bg-[#b9d88d] text-[#262820] shadow-md'
+                ? 'bg-[#B8F58A] text-[#08090B] shadow-[0_0_15px_rgba(184,245,138,0.3)]'
                 : 'bg-white/[0.08] hover:bg-white/[0.15] text-gray-300 border border-white/[0.06]'
             }`}
             title="Collaborative Whiteboard Canvas"
@@ -215,13 +215,13 @@ export function ControlDock({
             onClick={() => onToggleSidebar('notes')}
             className={`h-11 md:h-12 px-4 md:px-5 rounded-full transition-all duration-150 active:scale-95 flex items-center gap-2 font-medium text-xs md:text-sm ${
               sidebarOpen && activeSidebarTab === 'notes'
-                ? 'bg-[#b9d88d] text-[#262820] shadow-lg shadow-[#b9d88d]/20'
+                ? 'bg-[#B8F58A] text-[#08090B] shadow-[0_0_20px_rgba(184,245,138,0.35)]'
                 : 'bg-white/[0.08] hover:bg-white/[0.15] text-gray-300 border border-white/[0.06]'
             }`}
             title="Toggle Gemini AI Meeting Notes & Action Items"
           >
-            <Sparkles className="w-4 h-4 text-[#d7e9b7]" />
-            <span className="hidden sm:inline-block">AI Notes</span>
+            <Sparkles className="w-4 h-4 text-[#08090B] dark:text-[#08090B]" />
+            <span className="hidden sm:inline-block font-semibold">AI Notes</span>
           </button>
 
           {/* 9. Room Chat Toggle */}
@@ -230,7 +230,7 @@ export function ControlDock({
             onClick={() => onToggleSidebar('chat')}
             className={`w-11 h-11 md:w-12 md:h-12 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${
               sidebarOpen && activeSidebarTab === 'chat'
-                ? 'bg-[#b9d88d] text-[#262820] border border-[#cce1aa]'
+                ? 'bg-[#B8F58A] text-[#08090B] border border-[#B8F58A] shadow-[0_0_15px_rgba(184,245,138,0.3)]'
                 : 'bg-white/[0.08] hover:bg-white/[0.15] text-gray-300 border border-white/[0.06]'
             }`}
             title="Room Chat"

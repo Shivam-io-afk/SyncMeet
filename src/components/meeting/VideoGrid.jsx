@@ -69,19 +69,19 @@ export function VideoGrid({
               : () => onTogglePin(spotlightParticipant.id || 'local')}
           />
           {(localScreenShare || remoteScreenShare) && (
-            <div className="pointer-events-none absolute inset-0 rounded-[22px] border border-[#b9d88d]/60" />
+            <div className="pointer-events-none absolute inset-0 rounded-[26px] md:rounded-[30px] border border-[#B8F58A]/60" />
           )}
         </div>
       </div>
 
       {otherParticipants.length > 0 && (
-        <div className="flex h-[clamp(92px,22vh,180px)] shrink-0 gap-2.5 overflow-x-auto scrollbar-none md:gap-3">
+        <div className="flex shrink-0 items-center justify-center gap-3 overflow-x-auto scrollbar-none py-1 md:gap-4 max-w-full">
           {otherParticipants.map((participant) => (
             <div
               key={participant.id || 'local'}
-              className="h-full min-w-[140px] flex-1 basis-0"
+              className="h-[120px] sm:h-[135px] md:h-[155px] aspect-[4/3] shrink-0"
             >
-              <VideoTile {...getTileProps(participant)} />
+              <VideoTile {...getTileProps(participant)} isSpotlight={false} />
             </div>
           ))}
         </div>

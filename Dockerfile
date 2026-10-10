@@ -16,7 +16,13 @@ RUN npm ci
 # Copy source code and build config
 COPY index.html vite.config.js tailwind.config.js postcss.config.js ./
 COPY src ./src
-COPY public ./public
+
+ARG VITE_API_URL=
+ARG VITE_PUBLIC_APP_URL=
+ARG VITE_SENTRY_DSN=
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_PUBLIC_APP_URL=$VITE_PUBLIC_APP_URL
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
 
 # Build Vite client production bundle
 RUN npm run build
@@ -53,4 +59,3 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://localhost:' + (process.env.PORT || 5000) + '/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 CMD ["node", "server/server.js"]
-

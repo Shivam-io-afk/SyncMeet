@@ -178,7 +178,7 @@ function AppContent() {
   }, []);
 
   // 6. Hardware Media Devices Hook
-  const mediaState = useMediaDevices();
+  const mediaState = useMediaDevices({ enabled: viewMode !== 'login' });
   const mediaStateRef = useRef(mediaState);
   mediaStateRef.current = mediaState;
   const currentUserRef = useRef(currentUser);

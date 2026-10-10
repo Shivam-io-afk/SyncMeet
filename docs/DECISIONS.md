@@ -39,13 +39,15 @@ This document records architectural decisions, technical justifications, and dep
    MongoDB Atlas is the canonical store for all persistent meeting data (rooms, users, sessions, attendance, polls, Q&A, breakouts, agendas, notes).
 2. **Ephemeral / Presence Cache**:
    Redis (via `ioredis` with an in-memory fallback for local dev without `REDIS_URL`) manages fast real-time presence, reconnect grace period timers, and Socket.IO cluster broadcast adapters.
-3. **Zero `localStorage` Policy**:
+3. **Production Container Boundaries**:
+   Docker Compose requires managed MongoDB and Redis URLs, a production JWT secret, and exact CORS origins instead of shipping default credentials or unauthenticated data services. The app port binds to loopback by default behind a TLS-terminating reverse proxy.
+4. **Zero `localStorage` Policy**:
    No meeting-scoped state or tokens may be stored in `localStorage`. Meeting session state lives exclusively in `sessionStorage` and is validated against authoritative server state.
-4. **Stable Identity Over Socket ID**:
+5. **Stable Identity Over Socket ID**:
    All participants, video tiles, and attendance records are keyed by stable `userId` (or persistent guest ID), never ephemeral `socket.id`.
-5. **Correlation ID & Observability**:
+6. **Correlation ID & Observability**:
    Every HTTP request and Socket event carries a request correlation ID (`x-request-id`) logged through Pino and transmitted in response headers.
-6. **Graceful Degraded Mode**:
+7. **Graceful Degraded Mode**:
    Background queues (BullMQ), presence stores (Redis), and AI APIs (Gemini) must support seamless local in-memory fallbacks when external cloud dependencies are absent.
-7. **Least Privilege Containerization**:
+8. **Least Privilege Containerization**:
    Docker runtime runs as unprivileged `node` user with multi-stage compilation and automated healthcheck probes.

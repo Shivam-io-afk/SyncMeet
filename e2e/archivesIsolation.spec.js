@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Meeting Archives Account Isolation', () => {
-  test('A newly logged-in user never sees another user meetings in DB Archives', async ({ page }) => {
+  test('A newly logged-in user never sees another user meetings in Archives', async ({ page }) => {
     // 1. Navigate to the app
     await page.goto('/');
 
@@ -39,10 +39,10 @@ test.describe('Meeting Archives Account Isolation', () => {
     await page.click('button[type="submit"]');
 
     // Wait until Alice lands on the setup lobby
-    await expect(page.locator('text=Meeting setup')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: 'Meeting setup' })).toBeVisible({ timeout: 15000 });
 
-    // 3. User Alice opens DB Archives (should be empty for new account)
-    const dbArchivesBtn = page.locator('button:has-text("DB Archives")');
+    // 3. User Alice opens Archives (should be empty for new account)
+    const dbArchivesBtn = page.getByRole('button', { name: 'Archives', exact: true });
     await expect(dbArchivesBtn).toBeVisible();
     await dbArchivesBtn.click();
 
@@ -69,7 +69,7 @@ test.describe('Meeting Archives Account Isolation', () => {
     await page.locator('button:has-text("Yes, Leave")').click();
 
     // Wait for return to lobby
-    await expect(page.locator('text=Meeting setup')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: 'Meeting setup' })).toBeVisible({ timeout: 15000 });
 
     // 5. Alice signs out
     const aliceMenu = page.locator('header button').filter({ has: page.locator('div') }).last();
@@ -92,10 +92,10 @@ test.describe('Meeting Archives Account Isolation', () => {
     await page.click('button[type="submit"]');
 
     // Bob lands on lobby
-    await expect(page.locator('text=Meeting setup')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: 'Meeting setup' })).toBeVisible({ timeout: 15000 });
 
-    // 7. Bob clicks "DB Archives" button!
-    await page.locator('button:has-text("DB Archives")').click();
+    // 7. Bob opens Archives.
+    await page.getByRole('button', { name: 'Archives', exact: true }).click();
 
     // Verify modal is open
     await expect(archivesModal).toBeVisible();
@@ -107,4 +107,3 @@ test.describe('Meeting Archives Account Isolation', () => {
     await expect(page.locator('text=Alice Tester')).not.toBeVisible();
   });
 });
-

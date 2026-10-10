@@ -112,23 +112,23 @@ export function HeaderBar({
   };
 
   return (
-    <header className="relative z-30 flex h-[58px] shrink-0 items-center justify-between border-b border-[#e8e9e5] bg-[#fbfbf8] px-3 md:px-5 select-none dark:border-[#1e2330] dark:bg-[#12151e]">
+    <header className="relative z-30 flex h-[58px] shrink-0 items-center justify-between border-b border-[#e8e9e5] bg-[#fbfbf8] px-3 md:px-5 select-none dark:border-white/[0.08] dark:bg-[#12141A]/90 dark:backdrop-blur-md">
       {/* Left: Brand & Room Info */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#d8edb5] to-[#f2b59c] text-[#34372e]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#d8edb5] to-[#f2b59c] text-[#34372e] dark:from-[#B8F58A]/20 dark:to-[#B8F58A]/40 dark:text-[#B8F58A]">
             <Radio className="h-4 w-4" />
           </div>
-          <span className="hidden text-sm font-bold tracking-tight text-[#282a25] sm:inline-block dark:text-[#f3f4f6]">
+          <span className="hidden text-sm font-bold tracking-tight text-[#282a25] sm:inline-block dark:text-[#F5F5F5]">
             SyncMeet AI
           </span>
         </div>
 
-        <div className="hidden h-4 w-px bg-[#e2e3de] sm:block dark:bg-[#222736]" />
+        <div className="hidden h-4 w-px bg-[#e2e3de] sm:block dark:bg-white/[0.08]" />
 
         {/* Meeting Timer */}
-        <div className="flex items-center gap-1.5 rounded-full border border-[#efc8b7] bg-[#fff6f0] px-2.5 py-1 font-mono text-xs text-[#6d584e] dark:border-[#483325] dark:bg-[#251b14] dark:text-[#f3a67d]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#ee7569]" />
+        <div className="flex items-center gap-1.5 rounded-full border border-[#efc8b7] bg-[#fff6f0] px-2.5 py-1 font-mono text-xs text-[#6d584e] dark:border-white/[0.09] dark:bg-[#15171D] dark:text-[#A7AFBD]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#ee7569] dark:bg-[#B8F58A]" />
           <span>{formatTime(elapsedSeconds)}</span>
         </div>
       </div>
@@ -141,13 +141,13 @@ export function HeaderBar({
           transcriptionError
             ? 'bg-[#fff0e8] border-[#f2d5ca] text-[#a44b3e] dark:bg-[#2a1413] dark:border-[#4d2320] dark:text-[#fca5a5]'
             : isTranscribing
-            ? 'bg-[#edf4e3] border-[#dce8cb] text-[#657b4a] dark:bg-[#152319] dark:border-[#203926] dark:text-[#88c580]'
-            : 'bg-[#f2f3ef] border-[#e7e8e3] text-[#777a72] dark:bg-[#181d28] dark:border-[#262c3c] dark:text-[#a0a6b5]'
+            ? 'bg-[#edf4e3] border-[#dce8cb] text-[#657b4a] dark:bg-[#B8F58A]/10 dark:border-[#B8F58A]/30 dark:text-[#B8F58A]'
+            : 'bg-[#f2f3ef] border-[#e7e8e3] text-[#777a72] dark:bg-[#15171D] dark:border-white/[0.08] dark:text-[#A7AFBD]'
         }`}>
           <span className={`h-2 w-2 rounded-full ${
             transcriptionError
               ? 'bg-[#d94d49]'
-              : isTranscribing ? 'bg-[#9bbc6d] animate-pulse' : 'bg-[#b5b7b0] dark:bg-[#585e70]'
+              : isTranscribing ? 'bg-[#9bbc6d] dark:bg-[#B8F58A] animate-pulse' : 'bg-[#b5b7b0] dark:bg-[#585e70]'
           }`} />
           <span>
             {transcriptionError
@@ -165,8 +165,8 @@ export function HeaderBar({
         </div>
 
         {isGeneratingNotes && (
-          <div className="flex animate-pulse items-center gap-1.5 rounded-full border border-[#e8dcc5] bg-[#f8f3e9] px-3 py-1 text-xs font-medium text-[#897044] dark:border-[#4a3f25] dark:bg-[#251f12] dark:text-[#f2c97d]">
-            <Sparkles className="h-3.5 w-3.5 text-[#ad925a] dark:text-[#f2c97d]" />
+          <div className="flex animate-pulse items-center gap-1.5 rounded-full border border-[#e8dcc5] bg-[#f8f3e9] px-3 py-1 text-xs font-medium text-[#897044] dark:border-[#B8F58A]/30 dark:bg-[#B8F58A]/10 dark:text-[#B8F58A]">
+            <Sparkles className="h-3.5 w-3.5 text-[#ad925a] dark:text-[#B8F58A]" />
             <span>AI Synthesizing Notes...</span>
           </div>
         )}
@@ -179,15 +179,15 @@ export function HeaderBar({
         <button
           type="button"
           onClick={onOpenHistory}
-          className="flex items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-3 py-1.5 text-xs font-medium text-[#686b63] transition-all hover:bg-[#f4f5f1] dark:border-[#262c3c] dark:bg-[#181d28] dark:text-[#a0a6b5] dark:hover:bg-[#202737]"
+          className="flex items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-3 py-1.5 text-xs font-medium text-[#686b63] transition-all hover:bg-[#f4f5f1] dark:border-white/[0.09] dark:bg-[#15171D] dark:text-[#A7AFBD] dark:hover:bg-[#202023] dark:hover:text-[#F5F5F5]"
           title="Open Database Records"
         >
-          <Database className="h-3.5 w-3.5 text-[#8aa767]" />
+          <Database className="h-3.5 w-3.5 text-[#8aa767] dark:text-[#B8F58A]" />
           <span className="hidden sm:inline">Archives</span>
         </button>
 
-        <div className="flex items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-3 py-1.5 text-xs font-medium text-[#686b63] dark:border-[#262c3c] dark:bg-[#181d28] dark:text-[#a0a6b5]">
-          <Users className="h-3.5 w-3.5 text-[#8aa767]" />
+        <div className="flex items-center gap-1.5 rounded-full border border-[#e7e8e3] bg-white px-3 py-1.5 text-xs font-medium text-[#686b63] dark:border-white/[0.09] dark:bg-[#15171D] dark:text-[#A7AFBD]">
+          <Users className="h-3.5 w-3.5 text-[#8aa767] dark:text-[#B8F58A]" />
           <span>{participantCount}</span>
         </div>
 
@@ -196,10 +196,10 @@ export function HeaderBar({
           <button
             type="button"
             onClick={onOpenHostControls}
-            className="flex items-center gap-1.5 rounded-full border border-[#e5d7b7] bg-[#faf5e9] px-3 py-1.5 text-xs font-semibold text-[#826d3f] transition-all hover:bg-[#f4ecd9] active:scale-95 dark:border-[#42361e] dark:bg-[#251e12] dark:text-[#f2c97d] dark:hover:bg-[#2f2717]"
+            className="flex items-center gap-1.5 rounded-full border border-[#e5d7b7] bg-[#faf5e9] px-3 py-1.5 text-xs font-semibold text-[#826d3f] transition-all hover:bg-[#f4ecd9] active:scale-95 dark:border-white/[0.09] dark:bg-[#15171D] dark:text-[#B8F58A] dark:hover:bg-[#202023]"
             title="Open Host Moderation & Security Panel"
           >
-            <Shield className="h-3.5 w-3.5 text-[#a4894e]" />
+            <Shield className="h-3.5 w-3.5 text-[#a4894e] dark:text-[#B8F58A]" />
             <span className="hidden sm:inline">Host</span>
           </button>
         )}
@@ -209,7 +209,7 @@ export function HeaderBar({
         <button
           type="button"
           onClick={copyRoomLink}
-          className="hidden items-center gap-1.5 rounded-full bg-[#171815] px-3.5 py-1.5 text-xs font-semibold text-white transition-all hover:bg-[#34362f] active:scale-95 sm:flex dark:bg-[#222838] dark:hover:bg-[#2e374d]"
+          className="hidden items-center gap-1.5 rounded-full bg-[#171815] px-3.5 py-1.5 text-xs font-semibold text-white transition-all hover:bg-[#34362f] active:scale-95 sm:flex dark:bg-[#B8F58A] dark:text-[#08090B] dark:hover:bg-[#c9f9a4] dark:shadow-[0_0_15px_rgba(184,245,138,0.2)]"
         >
           <Copy className="w-3.5 h-3.5" />
           <span>{copied ? 'Copied' : 'Share Link'}</span>

@@ -12,10 +12,11 @@
     "check": "npm run check:server && npm run build",
     "test": "node --test --test-concurrency=1",
     "test:e2e": "playwright test",
-    "lint": "eslint server/ src/ test/",
+    "lint": "eslint server/ src/ test/ e2e/ scripts/ playwright.config.js",
     "format": "prettier --check docs/ test/characterization.test.js .prettierrc",
     "format:fix": "prettier --write docs/ test/characterization.test.js .prettierrc",
     "preview": "vite preview",
+    "test:e2e:isolated": "node scripts/run-isolated-e2e.mjs",
     "start": "node server/server.js"
   },
   "dependencies": {

@@ -90,6 +90,13 @@ test('frontend keeps localStorage limited to the explicit theme preference', () 
   assert.ok(themeContextPath, 'theme context should exist');
   const themeContext = readFileSync(themeContextPath, 'utf-8');
   assert.match(themeContext, /const THEME_STORAGE_KEY = 'syncmeet_theme';/);
+  assert.match(themeContext, /createContext\(null\)/, 'theme consumers should require a provider');
+  assert.match(
+    themeContext,
+    /event\.key !== THEME_STORAGE_KEY && event\.key !== null/,
+    'clearing localStorage in another tab should restore the system theme'
+  );
+  assert.match(themeContext, /if \(!context\) \{\s*throw new Error\('useTheme must be used within a ThemeProvider'\);/);
   assert.deepEqual(
     [...themeContext.matchAll(/localStorage\.(?:getItem|setItem)\(([^)]*)\)/g)].map(([, args]) => args.trim()),
     ['THEME_STORAGE_KEY', 'THEME_STORAGE_KEY, legacyStored', 'THEME_STORAGE_KEY, theme'],
@@ -117,6 +124,28 @@ test('meeting effect cleanup preserves reconnect membership while explicit finis
     appSource.slice(finishStart, finishEnd),
     /socketService\.leaveRoom\(\)/,
     'intentional leave must still revoke the participant membership'
+  );
+});
+
+test('camera and microphone access waits until after login and missing mic is not shown ready', () => {
+  const appSource = readFileSync('src/App.jsx', 'utf-8');
+  const mediaHook = readFileSync('src/hooks/useMediaDevices.js', 'utf-8');
+  const deviceSetup = readFileSync('src/components/lobby/DeviceSetup.jsx', 'utf-8');
+
+  assert.match(
+    appSource,
+    /useMediaDevices\(\{\s*enabled:\s*viewMode !== 'login'\s*\}\)/,
+    'media access should remain disabled while the login view is active'
+  );
+  assert.match(
+    mediaHook,
+    /if \(enabled\) \{\s*startStreamRef\.current\(\);/,
+    'the media hook should only acquire devices when enabled'
+  );
+  assert.match(
+    deviceSetup,
+    /hasAudioTrack \? 'Microphone ready' : 'Microphone unavailable'/,
+    'the lobby should not report a ready microphone when no live track exists'
   );
 });
 
@@ -397,4 +426,3 @@ test('meeting archives are strictly isolated per account and never leak to newly
     await app.close();
   } 
 });
-

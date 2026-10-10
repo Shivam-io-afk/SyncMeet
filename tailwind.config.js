@@ -8,10 +8,19 @@ export default {
   theme: {
     extend: {
       colors: {
+        sync: {
+          bg: "#08090B",
+          card: "#15171D",
+          tile: "#202023",
+          text: "#F5F5F5",
+          subtext: "#A7AFBD",
+          accent: "#B8F58A",
+          border: "rgba(255, 255, 255, 0.09)",
+        },
         surface: {
-          canvas: "#070707",
-          elevated: "#151416",
-          tile: "#222124",
+          canvas: "#08090B",
+          elevated: "#15171D",
+          tile: "#202023",
           dock: "rgba(20, 19, 21, 0.9)",
         },
         brand: {

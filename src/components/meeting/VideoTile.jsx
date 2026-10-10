@@ -73,14 +73,16 @@ export function VideoTile({
     studioEffectEnabled ? 'contrast-125 saturate-110 brightness-105' : ''
   );
 
-  const isHighlighted = isSpeaking || isSpotlight || isPinned;
-
   return (
     <div
-      className={`group relative flex h-full w-full select-none items-center justify-center overflow-hidden rounded-[20px] bg-[#d8dad4] shadow-[0_8px_24px_rgba(51,55,44,0.12)] transition-all duration-300 md:rounded-[24px] dark:bg-[#161a25] dark:shadow-none ${
-        isHighlighted
-          ? 'ring-2 ring-[#b9d88d] shadow-[0_0_0_3px_rgba(185,216,141,0.18)]'
-          : 'border border-white/80 hover:border-[#c9d6b3] dark:border-white/10 dark:hover:border-[#9bbc6d]/40'
+      className={`group relative flex h-full w-full select-none items-center justify-center overflow-hidden transition-all duration-300 ${
+        isSpotlight
+          ? 'rounded-[26px] md:rounded-[30px] border border-[#B8F58A]/85 hover:border-[#B8F58A] bg-[#08090B] dark:bg-[#121319] shadow-[0_0_24px_rgba(184,245,138,0.12)] hover:shadow-[0_0_32px_rgba(184,245,138,0.22)]'
+          : `rounded-[16px] md:rounded-[18px] bg-[#202023] dark:bg-[#202023] ${
+              isSpeaking
+                ? 'border border-[#B8F58A] ring-1 ring-[#B8F58A] shadow-[0_0_14px_rgba(184,245,138,0.2)]'
+                : 'border border-white/[0.08] hover:border-white/20'
+            }`
       } ${className}`}
     >
       {/* Video Stream Element */}
@@ -96,21 +98,37 @@ export function VideoTile({
             } ${getFilterClass()}`}
           />
           {/* Subtle bottom vignette gradient for optimal text contrast */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10" />
+          <div className={`pointer-events-none absolute inset-0 ${
+            isSpotlight
+              ? 'bg-gradient-to-t from-black/85 via-black/30 to-transparent'
+              : 'bg-gradient-to-t from-black/80 via-transparent to-transparent'
+          }`} />
         </div>
       ) : (
         /* Video Off Avatar State */
-        <div className="flex h-full w-full select-none flex-col items-center justify-center bg-gradient-to-br from-[#eaebe6] to-[#d9dcd4] text-[#656960] dark:from-[#1c2230] dark:to-[#12151e] dark:text-[#9ca3af]">
+        <div className={`flex h-full w-full select-none flex-col items-center justify-center ${
+          isSpotlight
+            ? 'bg-gradient-to-br from-[#1A1D26] to-[#0E1015] text-[#A7AFBD]'
+            : 'bg-[#202023] text-[#A7AFBD]'
+        }`}>
           <div className="relative">
             {participant.avatar ? (
               <img
                 src={participant.avatar}
                 alt={participant.name}
-                className="h-20 w-20 rounded-full object-cover shadow-xl ring-4 ring-white/80 transition-all group-hover:ring-white md:h-24 md:w-24 dark:ring-white/20 dark:group-hover:ring-white/40"
+                className={`${
+                  isSpotlight
+                    ? 'h-24 w-24 md:h-28 md:w-28 rounded-full object-cover shadow-2xl ring-4 ring-white/10'
+                    : 'h-14 w-14 md:h-16 md:w-16 rounded-full object-cover shadow-lg ring-2 ring-white/10'
+                } transition-all group-hover:ring-white/25`}
               />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-tr from-[#c4de9b] to-[#e6a790] p-0.5 shadow-xl md:h-24 md:w-24">
-                <div className="flex h-full w-full items-center justify-center rounded-full bg-[#f8f8f5] text-xl font-bold tracking-wide text-[#393c33] md:text-2xl dark:bg-[#181d28] dark:text-[#f3f4f6]">
+              <div className={`flex items-center justify-center rounded-full bg-gradient-to-tr from-[#B8F58A] to-[#f2b59c] p-0.5 shadow-xl ${
+                isSpotlight ? 'h-24 w-24 md:h-28 md:w-28' : 'h-14 w-14 md:h-16 md:w-16'
+              }`}>
+                <div className={`flex h-full w-full items-center justify-center rounded-full bg-[#181D28] font-bold text-[#F5F5F5] ${
+                  isSpotlight ? 'text-2xl md:text-3xl' : 'text-base md:text-lg'
+                }`}>
                   {participant.name ? participant.name.charAt(0).toUpperCase() : 'U'}
                 </div>
               </div>
@@ -118,7 +136,7 @@ export function VideoTile({
 
             {/* Speaking Pulse Ring */}
             {isSpeaking && (
-              <span className="absolute -inset-1.5 animate-ping rounded-full border-2 border-[#a9c979] opacity-75" />
+              <span className="absolute -inset-1.5 animate-ping rounded-full border-2 border-[#B8F58A] opacity-75" />
             )}
 
             {!isLocal && stream?.getAudioTracks().some((track) => track.readyState === 'live') && (
@@ -132,10 +150,10 @@ export function VideoTile({
                         console.warn('Could not enable participant audio:', err);
                       });
                     }}
-                    className="absolute -bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full bg-black/75 px-3 py-1.5 text-xs text-white backdrop-blur hover:bg-black/90 shadow-lg border border-white/10"
+                    className="absolute -bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full bg-black/85 px-3 py-1.5 text-xs text-white backdrop-blur hover:bg-black shadow-lg border border-white/10"
                     title={`Enable audio from ${participant.name || 'participant'}`}
                   >
-                    <Volume2 className="h-3.5 w-3.5 text-emerald-400" />
+                    <Volume2 className="h-3.5 w-3.5 text-[#B8F58A]" />
                     <span>Unmute Audio</span>
                   </button>
                 )}
@@ -147,9 +165,16 @@ export function VideoTile({
 
       {/* Screen Share Tag Banner */}
       {isScreenShare && (
-        <div className="absolute left-3.5 top-3.5 z-20 flex items-center gap-1.5 rounded-full border border-white/30 bg-black/55 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur-md">
-          <Monitor className="h-3.5 w-3.5 text-[#d1e8aa]" />
+        <div className="absolute left-3.5 top-3.5 z-20 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/65 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur-md">
+          <Monitor className="h-3.5 w-3.5 text-[#B8F58A]" />
           <span>Screen Presentation</span>
+        </div>
+      )}
+
+      {/* Muted Microphone Indicator in Top-Left for secondary participant cards */}
+      {!isSpotlight && participant.isMuted && (
+        <div className="pointer-events-none absolute top-3 left-3 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white/70 backdrop-blur-sm">
+          <MicOff className="w-3.5 h-3.5" />
         </div>
       )}
 
@@ -162,13 +187,13 @@ export function VideoTile({
       )}
 
       {/* Top Right Quick Action Tools (Hover) */}
-      <div className="absolute right-3.5 top-3.5 z-30 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/55 p-1 opacity-0 shadow-xl backdrop-blur-md transition-opacity group-hover:opacity-100">
+      <div className="absolute right-3.5 top-3.5 z-30 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/65 p-1 opacity-0 shadow-xl backdrop-blur-md transition-opacity group-hover:opacity-100">
         {onTogglePin && (
           <button
             type="button"
             onClick={onTogglePin}
-            className={`p-2 rounded-full transition-colors ${
-              isPinned ? 'bg-[#b9d88d] text-[#25271f]' : 'text-gray-200 hover:bg-white/15 hover:text-white'
+            className={`p-1.5 md:p-2 rounded-full transition-colors ${
+              isPinned ? 'bg-[#B8F58A] text-[#12151E]' : 'text-gray-200 hover:bg-white/15 hover:text-white'
             }`}
             title={isPinned ? 'Unpin tile' : 'Pin to spotlight'}
           >
@@ -181,8 +206,8 @@ export function VideoTile({
             type="button"
             onClick={() => setStudioEffectEnabled((enabled) => !enabled)}
             aria-pressed={studioEffectEnabled}
-            className={`p-2 rounded-full transition-colors ${
-              studioEffectEnabled ? 'bg-[#b9d88d] font-bold text-[#25271f]' : 'text-gray-200 hover:bg-white/15 hover:text-white'
+            className={`p-1.5 md:p-2 rounded-full transition-colors ${
+              studioEffectEnabled ? 'bg-[#B8F58A] font-bold text-[#12151E]' : 'text-gray-200 hover:bg-white/15 hover:text-white'
             }`}
             title={studioEffectEnabled ? 'Turn off studio visual effect' : 'Turn on studio visual effect'}
           >
@@ -193,31 +218,51 @@ export function VideoTile({
         <button
           type="button"
           onClick={handlePiP}
-          className="rounded-full p-2 text-gray-200 transition-colors hover:bg-white/15 hover:text-white"
+          className="rounded-full p-1.5 md:p-2 text-gray-200 transition-colors hover:bg-white/15 hover:text-white"
           title="Picture-in-Picture mode"
         >
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Floating Bottom Left Name Capsule (Google Meet & Linear Grade Glass Pill) */}
-      <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex max-w-[85%] items-center gap-2 rounded-full border border-white/20 bg-black/60 px-3 py-1.5 shadow-lg backdrop-blur-md">
-        {participant.isMuted ? (
-          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#f3a39a]/20 text-[#ffb0a6]">
-            <MicOff className="w-3 h-3" />
-          </div>
-        ) : isSpeaking ? (
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <AudioVisualizer level={audioLevel || 35} isSpeaking={true} barCount={3} />
-          </div>
-        ) : (
-          <div className="h-2 w-2 shrink-0 rounded-full bg-[#c7e7a2]" />
-        )}
-
-        <span className="truncate text-xs font-medium tracking-normal text-white md:text-sm">
-          {participant.name} {isLocal && <span className="font-normal text-[#d6eab8]">(You)</span>}
-        </span>
-      </div>
+      {/* Participant Name Placement matching Image 1 */}
+      {isSpotlight ? (
+        /* Hero Video Card Name: near bottom-left with clean white typography */
+        <div className="pointer-events-none absolute bottom-4 left-5 z-20 flex max-w-[85%] items-center gap-2">
+          <span className="truncate text-sm md:text-base font-semibold tracking-wide text-[#F5F5F5] drop-shadow-md">
+            {participant.name}
+          </span>
+          {isLocal && (
+            <span className="text-[11px] font-medium text-[#B8F58A] bg-[#B8F58A]/15 px-2 py-0.5 rounded-full border border-[#B8F58A]/30">
+              You
+            </span>
+          )}
+          {participant.isMuted ? (
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
+              <MicOff className="w-3 h-3" />
+            </div>
+          ) : isSpeaking ? (
+            <div className="flex items-center gap-1 shrink-0">
+              <AudioVisualizer level={audioLevel || 35} isSpeaking={true} barCount={3} />
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        /* Participant Card Name: bottom-left with subtle background if needed */
+        <div className="pointer-events-none absolute bottom-2.5 left-3 z-20 flex max-w-[85%] items-center gap-1.5">
+          <span className="truncate text-xs font-medium text-[#F5F5F5] drop-shadow-sm">
+            {participant.name}
+          </span>
+          {isLocal && (
+            <span className="text-[10px] text-[#B8F58A] font-normal">
+              (You)
+            </span>
+          )}
+          {!participant.isMuted && isSpeaking && (
+            <span className="h-1.5 w-1.5 rounded-full bg-[#B8F58A] animate-pulse" />
+          )}
+        </div>
+      )}
     </div>
   );
 }

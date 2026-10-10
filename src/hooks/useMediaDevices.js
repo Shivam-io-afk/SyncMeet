@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-export function useMediaDevices() {
+export function useMediaDevices({ enabled = true } = {}) {
   const [stream, setStream] = useState(null);
   const [audioDevices, setAudioDevices] = useState([]);
   const [videoDevices, setVideoDevices] = useState([]);
@@ -11,7 +11,7 @@ export function useMediaDevices() {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [screenStream, setScreenStream] = useState(null);
   const [permissionError, setPermissionError] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(enabled);
 
   const streamRef = useRef(null);
   const screenStreamRef = useRef(null);
@@ -131,13 +131,19 @@ export function useMediaDevices() {
     }
   }, [selectedAudioId, selectedVideoId, isAudioMuted, isVideoDisabled, refreshDevices]);
 
-  // Initial stream start on mount
+  const startStreamRef = useRef(startStream);
+  startStreamRef.current = startStream;
+
   useEffect(() => {
     isMountedRef.current = true;
-    startStream();
+    if (enabled) {
+      startStreamRef.current();
+    } else {
+      setIsLoading(false);
+    }
 
     const handleDeviceChange = () => {
-      refreshDevices();
+      if (enabled) refreshDevices();
     };
 
     navigator.mediaDevices?.addEventListener?.('devicechange', handleDeviceChange);
@@ -156,7 +162,7 @@ export function useMediaDevices() {
         screenStreamRef.current = null;
       }
     };
-  }, []);
+  }, [enabled, refreshDevices]);
 
   // Toggle Audio Track without re-requesting stream
   const toggleAudio = useCallback(() => {

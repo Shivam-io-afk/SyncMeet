@@ -16,6 +16,11 @@ export function getSpeechRecognitionErrorMessage(error) {
   }
 }
 
+export function getSpeechRecognitionRetryDelay(retryAttempts) {
+  const attempts = Number.isFinite(retryAttempts) ? Math.max(0, Math.floor(retryAttempts)) : 0;
+  return Math.min(15_000, 600 * (2 ** Math.min(attempts, 5)));
+}
+
 const FATAL_RECOGNITION_ERRORS = new Set([
   'not-allowed',
   'service-not-allowed',
@@ -170,7 +175,7 @@ export function useSpeechToText(isMuted = false, localUserName = 'You', isEnable
 
       if (!isEnabledRef.current || isMutedRef.current || isFatalErrorRef.current) return;
       if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
-      const retryDelay = Math.min(15_000, 600 * (2 ** Math.min(retryAttemptsRef.current, 5)));
+      const retryDelay = getSpeechRecognitionRetryDelay(retryAttemptsRef.current);
       restartTimerRef.current = setTimeout(() => {
         restartTimerRef.current = null;
         if (isMountedRef.current && isEnabledRef.current && !isMutedRef.current
@@ -202,7 +207,12 @@ export function useSpeechToText(isMuted = false, localUserName = 'You', isEnable
 
   // Sync listen state with isEnabled & isMuted
   useEffect(() => {
-    if (!isEnabled || isMuted) {
+    if (!isEnabled) {
+      safeStop();
+      isFatalErrorRef.current = false;
+      retryAttemptsRef.current = 0;
+      setTranscriptionError('');
+    } else if (isMuted) {
       safeStop();
     } else {
       if (!wasEnabledRef.current) {

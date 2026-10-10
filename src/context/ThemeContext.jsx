@@ -1,11 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 
-const ThemeContext = createContext({
-  theme: 'light',
-  isDark: false,
-  toggleTheme: () => {},
-  setTheme: () => {},
-});
+const ThemeContext = createContext(null);
 
 const THEME_STORAGE_KEY = 'syncmeet_theme';
 
@@ -71,7 +66,12 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     const handleStorage = (event) => {
-      if (event.key !== THEME_STORAGE_KEY) return;
+      try {
+        if (event.storageArea && event.storageArea !== window.localStorage) return;
+      } catch {
+        return;
+      }
+      if (event.key !== THEME_STORAGE_KEY && event.key !== null) return;
       if (event.newValue === 'dark' || event.newValue === 'light') {
         setThemeState(event.newValue);
       } else {

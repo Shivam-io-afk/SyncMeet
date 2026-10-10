@@ -162,7 +162,7 @@ SyncMeet AI employs a client-side mesh WebRTC topology for peer-to-peer audio an
 
 ### 2. Media Stream Management
 
-- `useMediaDevices`: Requests microphone and camera streams using `navigator.mediaDevices.getUserMedia`. Provides screen-sharing streams using `navigator.mediaDevices.getDisplayMedia`.
+- `useMediaDevices`: Requests microphone and camera streams using `navigator.mediaDevices.getUserMedia` only after the app leaves the login view; it remains disabled while the login page is active. Provides screen-sharing streams using `navigator.mediaDevices.getDisplayMedia`.
 - `outboundMediaStream`: Combines audio tracks from microphone with video tracks (from camera or screen capture).
 - Track Replacement: Tracks are replaced on active transceivers via `RTCRtpSender.replaceTrack` without requiring full SDP renegotiation.
 - Web Audio RMS Analysis: Analyzes microphone stream using `AudioContext` and `AnalyserNode` to compute live RMS volume levels (0–100) and speaking presence indicators.

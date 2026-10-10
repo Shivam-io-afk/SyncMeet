@@ -30,14 +30,14 @@ test.describe('Meeting Participant Reload and Rejoin Lifecycle', () => {
       await hostPage.fill('#auth-password', 'password123');
       await hostPage.click('button[type="submit"]');
 
-      await expect(hostPage.locator('text=Meeting setup')).toBeVisible({ timeout: 15000 });
+      await expect(hostPage.getByRole('button', { name: 'Meeting setup' })).toBeVisible({ timeout: 15000 });
 
       // Start meeting
       await hostPage.click('button:has-text("Start meeting now")');
-      await expect(hostPage.locator('button[aria-label="End meeting"]')).toBeVisible({ timeout: 15000 });
+      await expect(hostPage.locator('button[title="Leave Meeting"]')).toBeVisible({ timeout: 15000 });
 
-      // Read Room ID from HeaderBar
-      const roomIdBadge = hostPage.locator('header span.font-mono').first();
+      // Read the room ID from the meeting sidebar
+      const roomIdBadge = hostPage.locator('p.font-mono').first();
       await expect(roomIdBadge).toBeVisible();
       const roomIdText = (await roomIdBadge.textContent() || '').trim();
       expect(roomIdText.length).toBeGreaterThan(0);
@@ -58,37 +58,36 @@ test.describe('Meeting Participant Reload and Rejoin Lifecycle', () => {
       await participantPage.fill('#auth-password', 'password123');
       await participantPage.click('button[type="submit"]');
 
-      await expect(participantPage.locator('text=Meeting setup')).toBeVisible({ timeout: 15000 });
+      await expect(participantPage.getByRole('button', { name: 'Meeting setup' })).toBeVisible({ timeout: 15000 });
 
       // Switch to Join tab or enter room code
-      const enterCodeInput = participantPage.locator('input[placeholder*="room code" i], input[placeholder*="meeting code" i], input[placeholder*="room ID" i]').first();
-      if (await enterCodeInput.isVisible().catch(() => false)) {
-        await enterCodeInput.fill(roomIdText);
-        await participantPage.click('button:has-text("Join with code"), button:has-text("Join meeting")');
-      }
+      await participantPage.getByRole('button', { name: 'Join with code' }).click();
+      await participantPage.locator('#meeting-room-code').fill(roomIdText);
+      await participantPage.getByRole('button', { name: 'Enter meeting room' }).click();
 
-      // Check if in meeting
-      await expect(participantPage.locator('button[aria-label="Leave meeting"], button[aria-label="End meeting"]')).toBeVisible({ timeout: 15000 });
+      await expect(participantPage.getByRole('heading', { name: 'Asking to be let in...' })).toBeVisible({ timeout: 15000 });
+      await hostPage.getByRole('button', { name: 'Admit', exact: true }).click();
+      await expect(participantPage.locator('button[title="Leave Meeting"]')).toBeVisible({ timeout: 15000 });
 
       // 4. Verify Host sees the participant tile
-      const participantNameOnHost = hostPage.locator('text=Attendee Reload Tester');
+      const participantNameOnHost = hostPage.locator('main').getByText('Attendee Reload Tester', { exact: true });
       await expect(participantNameOnHost).toBeVisible({ timeout: 15000 });
 
       // Count remote participant tiles on Host screen (must be exactly 1)
-      const participantTilesBefore = await hostPage.locator('text=Attendee Reload Tester').count();
+      const participantTilesBefore = await participantNameOnHost.count();
       expect(participantTilesBefore).toBe(1);
 
       // 5. Participant reloads the page
       await participantPage.reload();
 
       // Participant should restore meeting session and reconnect
-      await expect(participantPage.locator('button[aria-label="Leave meeting"], button[aria-label="End meeting"]')).toBeVisible({ timeout: 15000 });
+      await expect(participantPage.locator('button[title="Leave Meeting"]')).toBeVisible({ timeout: 15000 });
 
       // Wait a moment for reconnection signaling to settle
       await hostPage.waitForTimeout(2000);
 
       // 6. Assert Host STILL sees exactly ONE participant tile (no ghost tile, no disappearance)
-      const participantTilesAfter = await hostPage.locator('text=Attendee Reload Tester').count();
+      const participantTilesAfter = await participantNameOnHost.count();
       expect(participantTilesAfter).toBe(1);
     } finally {
       await hostContext.close();
@@ -96,4 +95,3 @@ test.describe('Meeting Participant Reload and Rejoin Lifecycle', () => {
     }
   });
 });
-

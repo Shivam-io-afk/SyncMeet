@@ -12,6 +12,7 @@ import { HostAdmitBanner } from './HostAdmitBanner';
 import { useWebRTC } from '../../hooks/useWebRTC';
 import { socketService } from '../../services/socketService';
 import { BreakoutRoomsPanel } from './BreakoutRoomsPanel';
+import { BackgroundSilkWaves } from '../common/BackgroundSilkWaves';
 
 export function MeetingRoom({
   session,
@@ -113,8 +114,13 @@ export function MeetingRoom({
   ];
 
   return (
-    <div className="relative h-[100dvh] w-screen overflow-hidden bg-[#e5e7eb] p-0 text-[#20211e] dark:bg-[#07090e] dark:text-[#f3f4f6]">
-      <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#eef0ed] dark:bg-[#0c0e14]">
+    <div className="relative h-[100dvh] w-screen overflow-hidden bg-[#e5e7eb] p-0 text-[#20211e] dark:bg-[#08090B] dark:text-[#F5F5F5]">
+      {/* Background silk waves for dark mode visual depth matching reference image */}
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-40 dark:opacity-60">
+        <BackgroundSilkWaves />
+      </div>
+
+      <div className="relative z-10 flex h-full w-full flex-col overflow-hidden bg-[#eef0ed]/80 dark:bg-[#08090B]/90 backdrop-blur-[2px]">
       {/* Floating Host Admit / Deny Banner for waiting room requests */}
       <HostAdmitBanner
         knockRequests={knockRequests}
@@ -145,9 +151,9 @@ export function MeetingRoom({
       <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <nav
           aria-label="Meeting tools"
-          className="hidden w-[58px] shrink-0 flex-col items-center gap-3 border-r border-[#e8e9e5] bg-[#fdfdfb] py-4 lg:flex dark:border-[#1e2330] dark:bg-[#12151e]"
+          className="hidden w-[58px] shrink-0 flex-col items-center gap-3 border-r border-[#e8e9e5] bg-[#fdfdfb] py-4 lg:flex dark:border-white/[0.08] dark:bg-[#12141A]"
         >
-          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-[13px] bg-gradient-to-br from-[#d8edb5] to-[#f2b59c] text-[#30332a]">
+          <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-[13px] bg-gradient-to-br from-[#d8edb5] to-[#f2b59c] text-[#30332a] dark:from-[#B8F58A]/20 dark:to-[#B8F58A]/40 dark:text-[#B8F58A]">
             <Radio className="h-4 w-4" />
           </div>
           <div className="flex flex-1 flex-col items-center gap-2">
@@ -163,8 +169,8 @@ export function MeetingRoom({
                   onClick={() => onToggleSidebar(id)}
                   className={`flex h-10 w-10 items-center justify-center rounded-[14px] transition-all ${
                     active
-                      ? 'bg-[#161714] text-white shadow-sm dark:bg-[#222838]'
-                      : 'text-[#777a72] hover:bg-[#eff0eb] hover:text-[#242620] dark:text-[#8d93a3] dark:hover:bg-[#1c2230] dark:hover:text-[#f3f4f6]'
+                      ? 'bg-[#161714] text-white shadow-sm dark:bg-[#202023] dark:text-[#B8F58A] dark:ring-1 dark:ring-[#B8F58A]/30'
+                      : 'text-[#777a72] hover:bg-[#eff0eb] hover:text-[#242620] dark:text-[#A7AFBD] dark:hover:bg-[#1C1E26] dark:hover:text-[#F5F5F5]'
                   }`}
                 >
                   <Icon className="h-[17px] w-[17px]" />
@@ -178,7 +184,7 @@ export function MeetingRoom({
               aria-label="Host controls"
               title="Host controls"
               onClick={onOpenHostControls}
-              className="flex h-10 w-10 items-center justify-center rounded-[14px] text-[#777a72] transition-colors hover:bg-[#eff0eb] hover:text-[#242620] dark:text-[#8d93a3] dark:hover:bg-[#1c2230] dark:hover:text-[#f3f4f6]"
+              className="flex h-10 w-10 items-center justify-center rounded-[14px] text-[#777a72] transition-colors hover:bg-[#eff0eb] hover:text-[#242620] dark:text-[#A7AFBD] dark:hover:bg-[#1C1E26] dark:hover:text-[#F5F5F5]"
             >
               <Shield className="h-[17px] w-[17px]" />
             </button>
@@ -188,25 +194,25 @@ export function MeetingRoom({
             aria-label="Meeting archives"
             title="Meeting archives"
             onClick={onOpenHistory}
-            className="flex h-10 w-10 items-center justify-center rounded-[14px] text-[#777a72] transition-colors hover:bg-[#eff0eb] hover:text-[#242620] dark:text-[#8d93a3] dark:hover:bg-[#1c2230] dark:hover:text-[#f3f4f6]"
+            className="flex h-10 w-10 items-center justify-center rounded-[14px] text-[#777a72] transition-colors hover:bg-[#eff0eb] hover:text-[#242620] dark:text-[#A7AFBD] dark:hover:bg-[#1C1E26] dark:hover:text-[#F5F5F5]"
           >
             <CalendarDays className="h-[17px] w-[17px]" />
           </button>
         </nav>
 
-        <section className="hidden w-[210px] shrink-0 flex-col border-r border-[#e8e9e5] bg-[#fdfdfb] px-3.5 py-5 xl:flex dark:border-[#1e2330] dark:bg-[#12151e]">
+        <section className="hidden w-[210px] shrink-0 flex-col border-r border-[#e8e9e5] bg-[#fdfdfb] px-3.5 py-5 xl:flex dark:border-white/[0.08] dark:bg-[#12141A]">
           <div className="mb-5">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8e9188] dark:text-[#737887]">Live meeting</p>
-            <h1 className="break-words text-[16px] font-semibold leading-snug text-[#242620] dark:text-[#f3f4f6]">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8e9188] dark:text-[#A7AFBD]">Live meeting</p>
+            <h1 className="break-words text-[16px] font-semibold leading-snug text-[#242620] dark:text-[#F5F5F5]">
               {session.title || 'Meeting room'}
             </h1>
-            <p className="mt-1 truncate font-mono text-[10px] text-[#898c84] dark:text-[#7e8494]">{session.roomId}</p>
+            <p className="mt-1 truncate font-mono text-[10px] text-[#898c84] dark:text-[#646A78]">{session.roomId}</p>
           </div>
 
-          <div className="mb-4 rounded-2xl border border-[#e9ebe5] bg-white p-3.5 dark:border-[#202533] dark:bg-[#161a25]">
+          <div className="mb-4 rounded-2xl border border-[#e9ebe5] bg-white p-3.5 dark:border-white/[0.08] dark:bg-[#15171D]">
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-[#363831] dark:text-[#f3f4f6]">Participants</span>
-              <span className="rounded-full bg-[#f1f2ee] px-2 py-0.5 text-[10px] font-medium text-[#65685f] dark:bg-[#1f2636] dark:text-[#a0a6b5]">
+              <span className="text-[11px] font-semibold text-[#363831] dark:text-[#F5F5F5]">Participants</span>
+              <span className="rounded-full bg-[#f1f2ee] px-2 py-0.5 text-[10px] font-medium text-[#65685f] dark:bg-[#202023] dark:text-[#A7AFBD]">
                 {displayParticipants.length + 1}
               </span>
             </div>
@@ -214,34 +220,34 @@ export function MeetingRoom({
               {[{ ...localUser, isLocal: true }, ...displayParticipants].map((participant) => (
                 <div key={participant.id} className="flex min-w-0 items-center gap-2">
                   <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${
-                    participant.isLocal ? 'bg-[#e8f1da] text-[#55683d] dark:bg-[#1f2e1a] dark:text-[#88c580]' : 'bg-[#f4e7dc] text-[#835d43] dark:bg-[#342419] dark:text-[#f4a261]'
+                    participant.isLocal ? 'bg-[#e8f1da] text-[#55683d] dark:bg-[#B8F58A]/15 dark:text-[#B8F58A]' : 'bg-[#f4e7dc] text-[#835d43] dark:bg-[#342419] dark:text-[#f4a261]'
                   }`}>
                     {participant.name?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[10px] font-medium text-[#34362f] dark:text-[#f3f4f6]">
+                    <p className="truncate text-[10px] font-medium text-[#34362f] dark:text-[#F5F5F5]">
                       {participant.name}{participant.isLocal ? ' (You)' : ''}
                     </p>
-                    <p className="text-[9px] text-[#92958d] dark:text-[#8d93a3]">
+                    <p className="text-[9px] text-[#92958d] dark:text-[#A7AFBD]">
                       {participant.isMuted ? 'Muted' : 'Mic on'}
                     </p>
                   </div>
-                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${participant.isMuted ? 'bg-[#d49a8c]' : 'bg-[#9ebf70]'}`} />
+                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${participant.isMuted ? 'bg-[#d49a8c] dark:bg-[#d94d49]' : 'bg-[#9ebf70] dark:bg-[#B8F58A]'}`} />
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#e9ebe5] bg-white p-3.5 dark:border-[#202533] dark:bg-[#161a25]">
-            <div className="mb-2 flex items-center gap-2 text-[#67744f] dark:text-[#9bbc6d]">
+          <div className="rounded-2xl border border-[#e9ebe5] bg-white p-3.5 dark:border-white/[0.08] dark:bg-[#15171D]">
+            <div className="mb-2 flex items-center gap-2 text-[#67744f] dark:text-[#B8F58A]">
               <Sparkles className="h-3.5 w-3.5" />
-              <span className="text-[11px] font-semibold text-[#363831] dark:text-[#f3f4f6]">Meeting tools</span>
+              <span className="text-[11px] font-semibold text-[#363831] dark:text-[#F5F5F5]">Meeting tools</span>
             </div>
-            <p className="text-[10px] leading-relaxed text-[#85887f] dark:text-[#9ca3af]">
+            <p className="text-[10px] leading-relaxed text-[#85887f] dark:text-[#A7AFBD]">
               Open notes, transcript, chat, or the collaborative whiteboard from the navigation.
             </p>
-            <div className="mt-3 flex items-center gap-1.5 text-[9px] font-medium text-[#70736a] dark:text-[#8d93a3]">
-              <span className={`h-1.5 w-1.5 rounded-full ${isListening ? 'bg-[#98b96b]' : 'bg-[#c3c5be] dark:bg-[#4a5060]'}`} />
+            <div className="mt-3 flex items-center gap-1.5 text-[9px] font-medium text-[#70736a] dark:text-[#A7AFBD]">
+              <span className={`h-1.5 w-1.5 rounded-full ${isListening ? 'bg-[#98b96b] dark:bg-[#B8F58A]' : 'bg-[#c3c5be] dark:bg-[#4a5060]'}`} />
               {isListening ? 'Transcription active' : 'Transcription paused'}
             </div>
           </div>
@@ -249,7 +255,7 @@ export function MeetingRoom({
 
         <nav
           aria-label="Meeting tools"
-          className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-[#e7e8e3] bg-[#fdfdfb] px-2 py-1.5 scrollbar-none lg:hidden dark:border-[#1e2330] dark:bg-[#12151e]"
+          className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-[#e7e8e3] bg-[#fdfdfb] px-2 py-1.5 scrollbar-none lg:hidden dark:border-white/[0.08] dark:bg-[#12141A]"
         >
           {navigationItems.map(({ id, label, icon: Icon }) => {
             const active = sidebarOpen && activeSidebarTab === id;
@@ -263,8 +269,8 @@ export function MeetingRoom({
                 onClick={() => onToggleSidebar(id)}
                 className={`flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[11px] font-medium transition-colors ${
                   active
-                    ? 'bg-[#171815] text-white dark:bg-[#222838]'
-                    : 'text-[#777a72] hover:bg-[#eff0eb] dark:text-[#8d93a3] dark:hover:bg-[#1c2230] dark:hover:text-[#f3f4f6]'
+                    ? 'bg-[#171815] text-white dark:bg-[#202023] dark:text-[#B8F58A]'
+                    : 'text-[#777a72] hover:bg-[#eff0eb] dark:text-[#A7AFBD] dark:hover:bg-[#1C1E26] dark:hover:text-[#F5F5F5]'
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -276,7 +282,7 @@ export function MeetingRoom({
 
         {/* Center: video-first call stage */}
         <main
-          className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center bg-[#eff0ec] pb-20 dark:bg-[#090b10]"
+          className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center bg-[#eff0ec] pb-20 dark:bg-[#08090B]"
         >
           <VideoGrid
             localUser={localUser}
@@ -291,7 +297,7 @@ export function MeetingRoom({
           />
 
           {displayParticipants.length === 0 && (
-            <div className="absolute left-1/2 top-4 z-10 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-xl border border-[#e5e7df] bg-white/90 px-4 py-2 text-center text-xs text-[#696c64] shadow-sm backdrop-blur dark:border-[#222736] dark:bg-[#12151e]/90 dark:text-[#a0a6b5]">
+            <div className="absolute left-1/2 top-4 z-10 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-xl border border-[#e5e7df] bg-white/90 px-4 py-2 text-center text-xs text-[#696c64] shadow-sm backdrop-blur dark:border-white/[0.09] dark:bg-[#15171D]/90 dark:text-[#A7AFBD]">
               You’re the only participant in this call. Share the meeting link to invite others.
             </div>
           )}
@@ -308,7 +314,7 @@ export function MeetingRoom({
         <aside
           className={`${
             sidebarOpen ? 'flex' : 'hidden'
-          } z-20 mb-20 h-[38%] max-h-[40%] min-h-[190px] w-full shrink-0 flex-col border-t border-[#e7e8e3] bg-[#fbfbf8] transition-all duration-300 lg:mb-0 lg:h-full lg:max-h-none lg:min-h-0 lg:w-[340px] lg:border-l lg:border-t-0 xl:w-[360px] dark:border-[#1e2330] dark:bg-[#12151e]`}
+          } z-20 mb-20 h-[38%] max-h-[40%] min-h-[190px] w-full shrink-0 flex-col border-t border-[#e7e8e3] bg-[#fbfbf8] transition-all duration-300 lg:mb-0 lg:h-full lg:max-h-none lg:min-h-0 lg:w-[340px] lg:border-l lg:border-t-0 xl:w-[360px] dark:border-white/[0.08] dark:bg-[#12141A]`}
         >
           {activeSidebarTab === 'breakouts' ? (
             <BreakoutRoomsPanel
