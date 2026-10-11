@@ -27,6 +27,11 @@ const FATAL_RECOGNITION_ERRORS = new Set([
   'audio-capture',
   'language-not-supported',
 ]);
+const MAX_IN_MEMORY_TRANSCRIPTS = 1000;
+
+export function keepRecentTranscripts(entries) {
+  return entries.slice(-MAX_IN_MEMORY_TRANSCRIPTS);
+}
 
 /**
  * Browser SpeechRecognition with bounded reconnects and visible failures.
@@ -141,7 +146,7 @@ export function useSpeechToText(isMuted = false, localUserName = 'You', isEnable
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
               createdAt: Date.now(),
             };
-            setTranscripts((prev) => [...prev, entry]);
+            setTranscripts((prev) => keepRecentTranscripts([...prev, entry]));
             onTranscriptRef.current(entry);
           }
         } else {
@@ -234,7 +239,7 @@ export function useSpeechToText(isMuted = false, localUserName = 'You', isEnable
       timestamp: timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       createdAt: Date.now(),
     };
-    setTranscripts((prev) => [...prev, entry]);
+    setTranscripts((prev) => keepRecentTranscripts([...prev, entry]));
     return entry;
   }, []);
 
@@ -245,7 +250,8 @@ export function useSpeechToText(isMuted = false, localUserName = 'You', isEnable
         const id = entry.id || `restored-${entry.createdAt}-${entry.speaker}-${entry.text}`;
         byId.set(id, { ...entry, id });
       });
-      return [...byId.values()].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      return keepRecentTranscripts([...byId.values()]
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)));
     });
   }, []);
 

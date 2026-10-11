@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { socketService } from '../services/socketService';
+import { apiService } from '../services/apiService';
 
-const ICE_SERVERS = {
+const DEFAULT_ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
@@ -19,6 +20,7 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
   const pendingIceCandidates = useRef(new Map());
   const remoteStreams = useRef(new Map());
   const iceRestartStates = useRef(new Map());
+  const iceServersRef = useRef(DEFAULT_ICE_SERVERS);
   const restartPeerRef = useRef(null);
   const localStreamRef = useRef(localStream);
   localStreamRef.current = localStream;
@@ -44,6 +46,21 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
       return Promise.resolve();
     });
     await Promise.all(replacements);
+    await Promise.all(pc.getSenders().map(async (sender) => {
+      const kind = sender.track?.kind;
+      if (kind !== 'audio' && kind !== 'video') return;
+      try {
+        const parameters = sender.getParameters();
+        const encodings = parameters.encodings?.length ? parameters.encodings : [{}];
+        parameters.encodings = encodings.map((encoding) => ({
+          ...encoding,
+          maxBitrate: kind === 'video' ? 900_000 : 32_000,
+        }));
+        await sender.setParameters(parameters);
+      } catch (error) {
+        console.warn(`Could not apply ${kind} mesh bitrate cap:`, error);
+      }
+    }));
   }, []);
 
   // Helper to create PeerConnection for a remote socket
@@ -52,7 +69,7 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
       return peerConnections.current.get(targetSocketId);
     }
 
-    const pc = new RTCPeerConnection(ICE_SERVERS);
+    const pc = new RTCPeerConnection(iceServersRef.current);
     peerConnections.current.set(targetSocketId, pc);
     iceRestartStates.current.set(targetSocketId, {
       attempts: 0,
@@ -114,8 +131,19 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
         restartState.pending = false;
         restartState.timer = null;
         restartState.retryTimer = null;
-      } else if (pc.connectionState === 'failed') {
-        console.warn(`WebRTC connection to participant ${targetSocketId} failed. Attempting ICE recovery; a TURN relay may still be required.`);
+      } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+        if (pc.connectionState === 'disconnected') {
+          if (restartState?.timer) clearTimeout(restartState.timer);
+          if (restartState) {
+            restartState.timer = setTimeout(() => {
+              restartState.timer = null;
+              if (pc.connectionState !== 'disconnected') return;
+              restartPeerRef.current?.(targetSocketId);
+            }, 3000);
+          }
+          return;
+        }
+        console.warn(`WebRTC connection to participant ${targetSocketId} failed. Attempting ICE recovery.`);
         const localSocketId = socketService.getSocketId();
         if (!localSocketId || !isSocketIdBefore(localSocketId, targetSocketId)) {
           socketService.requestIceRestart(targetSocketId);
@@ -198,10 +226,21 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
   useEffect(() => {
     if (!session?.roomId) return;
 
+    const roomId = session.parentRoomId || session.roomId;
+    const iceConfigReady = apiService.getRoomIceConfig(roomId)
+      .then((config) => {
+        if (Array.isArray(config.iceServers) && config.iceServers.length > 0) {
+          iceServersRef.current = { iceServers: config.iceServers };
+        }
+      })
+      .catch((error) => {
+        console.warn('Could not load room ICE configuration; using public STUN servers:', error.message);
+      });
     socketService.connect();
 
     // 1. Existing peers already in room
     const handleRoomPeers = async ({ peers }) => {
+      await iceConfigReady;
       socketService.resendScreenShareState();
       for (const peer of peers) {
         setRemotePeers((prev) => {
@@ -228,7 +267,8 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
     };
 
     // 2. New user joined
-    const handleUserJoined = ({ socketId, user }) => {
+    const handleUserJoined = async ({ socketId, user }) => {
+      await iceConfigReady;
       console.log('👤 [WebRTC] New user joined:', user.name);
       setRemotePeers((prev) => {
         if (prev.some((peer) => peer.socketId === socketId)) return prev;
@@ -252,6 +292,7 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
 
     // 3. Received Offer
     const handleOffer = async ({ senderSocketId, user, offer }) => {
+      await iceConfigReady;
       const pc = createPeerConnection(senderSocketId, user);
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(offer));

@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client';
 import { getApiBaseUrl } from './apiBaseUrl';
+import { apiService } from './apiService';
 
 class SocketService {
   constructor() {
@@ -29,7 +30,13 @@ class SocketService {
     this.socket.on('connect', () => {
       console.log('⚡ [Socket] Connected with ID:', this.socket.id);
       this.joinedSocketId = null;
-      this.emitJoinRoom();
+      const connectedSocket = this.socket;
+      const connectedRoomId = this.roomId;
+      apiService.refreshRoomAccessToken(connectedRoomId).then((access) => {
+        if (this.socket !== connectedSocket || this.roomId !== connectedRoomId) return;
+        if (access?.token) this.roomAccessToken = access.token;
+        this.emitJoinRoom();
+      });
     });
 
     this.socket.on('disconnect', () => {
@@ -151,6 +158,10 @@ class SocketService {
 
   sendWhiteboardClear() {
     this.socket?.emit('whiteboard-clear');
+  }
+
+  requestWhiteboardState() {
+    this.socket?.emit('whiteboard-request-state');
   }
 
   // Closed Captions

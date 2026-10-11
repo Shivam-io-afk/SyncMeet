@@ -8,7 +8,7 @@ import { MeetingQuestion } from '../models/MeetingQuestion.js';
 import { Room } from '../models/Room.js';
 import { ScheduledMeeting } from '../models/ScheduledMeeting.js';
 import { isDbConnected } from '../config/db.js';
-import { issueRoomAccessToken, requireRoomAccess, requireRoomHost } from '../middleware/roomAccessMiddleware.js';
+import { issueRoomCredentials, requireRoomAccess, requireRoomHost } from '../middleware/roomAccessMiddleware.js';
 import { optionalProtect } from '../middleware/authMiddleware.js';
 import {
   breakoutSessions,
@@ -229,7 +229,7 @@ router.post('/schedules', optionalProtect, async (req, res) => {
       });
       saved = meeting;
     }
-    const accessToken = issueRoomAccessToken({
+    const credentials = issueRoomCredentials({
       roomId,
       participantId: hostId,
       role: 'host',
@@ -248,7 +248,7 @@ router.post('/schedules', optionalProtect, async (req, res) => {
       }
     }
     const { invitees: _invitees, ...publicMeeting } = saved.toObject ? saved.toObject() : saved;
-    return res.status(201).json({ success: true, meeting: publicMeeting, accessToken });
+    return res.status(201).json({ success: true, meeting: publicMeeting, ...credentials });
   } catch (error) {
     console.error('Create scheduled meeting error:', error);
     return res.status(500).json({ success: false, message: 'Could not schedule meeting' });

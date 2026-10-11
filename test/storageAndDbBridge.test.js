@@ -117,7 +117,7 @@ test('meeting effect cleanup preserves reconnect membership while explicit finis
   );
 
   const finishStart = appSource.indexOf('const finishMeeting = useCallback(async () => {');
-  const finishEnd = appSource.indexOf('}, [clearTranscripts, saveMeetingHistory]);', finishStart);
+  const finishEnd = appSource.indexOf('\n  ]);', finishStart);
   assert.notEqual(finishStart, -1, 'explicit meeting finish handler should exist');
   assert.notEqual(finishEnd, -1, 'explicit meeting finish handler should have a boundary');
   assert.match(

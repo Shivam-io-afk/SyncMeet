@@ -78,6 +78,7 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
   const server = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}/api/features`;
+  let roomAccessToken = '';
   const request = async (path, method = 'GET', body, participantId = 'test-host', role = 'host') => {
     const roomId = path.match(/\/(?:rooms|schedules)\/([^/]+)/)?.[1];
     const response = await fetch(`${baseUrl}${path}`, {
@@ -85,7 +86,7 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
       headers: {
         'Content-Type': 'application/json',
         ...(roomId ? {
-          'X-Room-Access-Token': issueRoomAccessToken({
+          'X-Room-Access-Token': (role === 'host' && roomAccessToken) || issueRoomAccessToken({
             roomId: decodeURIComponent(roomId),
             participantId,
             displayName: role === 'host' ? 'Test Host' : 'Test Participant',
@@ -105,6 +106,7 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
 
     const scheduled = await request('/schedules', 'POST', {
       title: 'Feature test meeting',
+      hostName: 'Test Host',
       startsAt: new Date(Date.now() + 3_600_000).toISOString(),
       timeZone: 'Asia/Kolkata',
       durationMinutes: 30,
@@ -114,6 +116,8 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
     assert.equal(scheduled.status, 201);
     assert.equal(Object.hasOwn(scheduled.data.meeting, 'invitees'), false);
     const { roomId } = scheduled.data.meeting;
+    const hostParticipantId = scheduled.data.meeting.createdBy;
+    roomAccessToken = scheduled.data.accessToken;
     assert.equal((await request(`/schedules/${roomId}`)).data.meeting.title, 'Feature test meeting');
 
     const agenda = [{ id: 'agenda-1', text: 'Review the release', isCompleted: true }];
@@ -190,12 +194,12 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
       voterId: 'test-voter',
       optionIds: [poll.options[0].id],
     });
-    assert.deepEqual(voted.data.poll.options[0].voters, ['test-host']);
+    assert.deepEqual(voted.data.poll.options[0].voters, [hostParticipantId]);
     const repeatedVote = await request(`/rooms/${roomId}/polls/${poll.id}/votes`, 'POST', {
       voterId: 'another-voter',
       optionIds: [poll.options[0].id],
     });
-    assert.deepEqual(repeatedVote.data.poll.options[0].voters, ['test-host']);
+    assert.deepEqual(repeatedVote.data.poll.options[0].voters, [hostParticipantId]);
     assert.equal((await request(`/rooms/${roomId}/polls/${poll.id}/close`, 'PATCH')).status, 200);
     assert.equal((await request(`/rooms/${roomId}/polls/${poll.id}/votes`, 'POST', {
       voterId: 'late-voter',
@@ -210,14 +214,14 @@ test('meeting feature API persists schedules, agendas, notes, polls, questions, 
       authorName: 'Test voter',
     });
     assert.equal(questionResponse.status, 201);
-    assert.equal(questionResponse.data.question.authorId, 'test-host');
+    assert.equal(questionResponse.data.question.authorId, hostParticipantId);
     assert.equal(questionResponse.data.question.authorName, 'Test Host');
     const questionId = questionResponse.data.question.id;
     assert((await request(`/rooms/${roomId}/questions`)).data.questions.some((item) => item.id === questionId));
     const upvote = await request(`/rooms/${roomId}/questions/${questionId}/upvote`, 'POST', {
       voterId: 'another-voter',
     });
-    assert.deepEqual(upvote.data.question.upvoterIds, ['test-host']);
+    assert.deepEqual(upvote.data.question.upvoterIds, [hostParticipantId]);
     const removedUpvote = await request(`/rooms/${roomId}/questions/${questionId}/upvote`, 'POST', {
       voterId: 'test-voter',
     });

@@ -129,6 +129,7 @@ export function MeetingRoom({
       {/* Top Header Bar per Flowdaigram Wireframe 3.2 */}
       <HeaderBar
         roomId={session.roomId}
+        meetingStartedAt={session.meetingStartedAt}
         participantCount={displayParticipants.length + 1}
         isTranscribing={isListening}
         transcriptionError={transcriptionError}

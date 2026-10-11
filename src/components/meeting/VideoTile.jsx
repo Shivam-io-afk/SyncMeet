@@ -20,7 +20,14 @@ export function VideoTile({
   const audioRef = useRef(null);
   const [studioEffectEnabled, setStudioEffectEnabled] = useState(false);
   const [audioNeedsGesture, setAudioNeedsGesture] = useState(false);
+  const [videoNeedsGesture, setVideoNeedsGesture] = useState(false);
   const hasVideoTrack = stream?.getVideoTracks().some((track) => track.readyState === 'live');
+  const hasAudioTrack = stream?.getAudioTracks().some((track) => track.readyState === 'live');
+
+  useEffect(() => {
+    if (isLocal || !hasAudioTrack) setAudioNeedsGesture(false);
+    if (!hasVideoTrack || participant.isVideoDisabled) setVideoNeedsGesture(false);
+  }, [hasAudioTrack, hasVideoTrack, isLocal, participant.isVideoDisabled]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -29,17 +36,21 @@ export function VideoTile({
     if (video.srcObject !== stream) {
       video.srcObject = stream;
     }
-    video.play().catch((err) => {
-      if (err.name !== 'AbortError') {
-        console.warn('Could not play participant video:', err);
+    video.play().then(
+      () => setVideoNeedsGesture(false),
+      (err) => {
+        if (err.name === 'NotAllowedError') {
+          setVideoNeedsGesture(true);
+        } else if (err.name !== 'AbortError') {
+          console.warn('Could not play participant video:', err);
+        }
       }
-    });
+    );
   }, [stream, hasVideoTrack, participant.isVideoDisabled]);
 
   useEffect(() => {
     const audio = audioRef.current;
-    const hasLiveAudio = stream?.getAudioTracks().some((track) => track.readyState === 'live');
-    if (!audio || isLocal || !hasLiveAudio) return;
+    if (!audio || isLocal || !hasAudioTrack) return;
 
     if (audio.srcObject !== stream) {
       audio.srcObject = stream;
@@ -53,7 +64,28 @@ export function VideoTile({
         console.warn('Could not play participant audio:', err);
       }
     });
-  }, [stream, isLocal]);
+  }, [stream, isLocal, hasAudioTrack]);
+
+  const enablePlayback = async () => {
+    const playbackAttempts = [];
+    if (!isLocal && hasAudioTrack && audioRef.current) {
+      playbackAttempts.push(audioRef.current.play().then(
+        () => setAudioNeedsGesture(false),
+        (error) => {
+          if (error.name !== 'AbortError') console.warn('Could not enable participant audio:', error);
+        }
+      ));
+    }
+    if (hasVideoTrack && !participant.isVideoDisabled && videoRef.current) {
+      playbackAttempts.push(videoRef.current.play().then(
+        () => setVideoNeedsGesture(false),
+        (error) => {
+          if (error.name !== 'AbortError') console.warn('Could not enable participant video:', error);
+        }
+      ));
+    }
+    await Promise.all(playbackAttempts);
+  };
 
   const handlePiP = async () => {
     if (videoRef.current && document.pictureInPictureEnabled) {
@@ -90,7 +122,7 @@ export function VideoTile({
             ref={videoRef}
             autoPlay
             playsInline
-            muted={isLocal}
+            muted
             className={`w-full h-full ${isScreenShare ? 'object-contain bg-black' : 'object-cover'} ${
               isLocal && !isScreenShare ? 'scale-x-[-1]' : ''
             } ${getFilterClass()}`}
@@ -121,28 +153,20 @@ export function VideoTile({
               <span className="absolute -inset-1.5 animate-ping rounded-full border-2 border-[#a9c979] opacity-75" />
             )}
 
-            {!isLocal && stream?.getAudioTracks().some((track) => track.readyState === 'live') && (
-              <>
-                <audio ref={audioRef} autoPlay />
-                {audioNeedsGesture && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      audioRef.current?.play().then(() => setAudioNeedsGesture(false)).catch((err) => {
-                        console.warn('Could not enable participant audio:', err);
-                      });
-                    }}
-                    className="absolute -bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full bg-black/75 px-3 py-1.5 text-xs text-white backdrop-blur hover:bg-black/90 shadow-lg border border-white/10"
-                    title={`Enable audio from ${participant.name || 'participant'}`}
-                  >
-                    <Volume2 className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>Unmute Audio</span>
-                  </button>
-                )}
-              </>
-            )}
           </div>
         </div>
+      )}
+      {!isLocal && hasAudioTrack && <audio ref={audioRef} autoPlay className="sr-only" />}
+      {(audioNeedsGesture || videoNeedsGesture) && (
+        <button
+          type="button"
+          onClick={() => { void enablePlayback(); }}
+          className="absolute bottom-3.5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/10 bg-black/75 px-3 py-1.5 text-xs text-white shadow-lg backdrop-blur hover:bg-black/90"
+          title={`Enable media from ${participant.name || 'participant'}`}
+        >
+          <Volume2 className="h-3.5 w-3.5 text-emerald-400" />
+          <span>Enable audio/video</span>
+        </button>
       )}
 
       {/* Screen Share Tag Banner */}

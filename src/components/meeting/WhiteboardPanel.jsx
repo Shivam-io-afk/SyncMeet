@@ -5,6 +5,7 @@ import { socketService } from '../../services/socketService';
 export function WhiteboardPanel({ onSaveWhiteboard }) {
   const canvasRef = useRef(null);
   const hasInitializedCanvas = useRef(false);
+  const pendingHistoryRef = useRef([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState('#536a37');
   const [brushSize, setBrushSize] = useState(3);
@@ -27,6 +28,20 @@ export function WhiteboardPanel({ onSaveWhiteboard }) {
     ctx.lineJoin = 'round';
     ctx.stroke();
   }, []);
+
+  const drawNormalizedStroke = useCallback((stroke) => {
+    const canvas = canvasRef.current;
+    if (!canvas?.width || !canvas.height) return;
+    drawSegment(
+      stroke.x0 * canvas.width,
+      stroke.y0 * canvas.height,
+      stroke.x1 * canvas.width,
+      stroke.y1 * canvas.height,
+      stroke.color,
+      stroke.brushSize,
+      stroke.mode
+    );
+  }, [drawSegment]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -52,6 +67,10 @@ export function WhiteboardPanel({ onSaveWhiteboard }) {
         ctx.drawImage(previousCanvas, 0, 0, previousCanvas.width, previousCanvas.height, 0, 0, canvas.width, canvas.height);
       }
       hasInitializedCanvas.current = true;
+      if (pendingHistoryRef.current.length) {
+        pendingHistoryRef.current.forEach(drawNormalizedStroke);
+        pendingHistoryRef.current = [];
+      }
     };
 
     const resizeObserver = new ResizeObserver(resizeCanvas);
@@ -59,7 +78,18 @@ export function WhiteboardPanel({ onSaveWhiteboard }) {
     resizeCanvas();
 
     const handleRemoteDraw = (stroke) => {
-      drawSegment(stroke.x0, stroke.y0, stroke.x1, stroke.y1, stroke.color, stroke.brushSize, stroke.mode);
+      drawNormalizedStroke(stroke);
+    };
+
+    const handleRemoteState = ({ strokes = [] } = {}) => {
+      if (!canvas.width || !canvas.height) {
+        pendingHistoryRef.current = strokes;
+        return;
+      }
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      strokes.forEach(drawNormalizedStroke);
     };
 
     const handleRemoteClear = () => {
@@ -70,13 +100,16 @@ export function WhiteboardPanel({ onSaveWhiteboard }) {
 
     socketService.on('whiteboard-draw', handleRemoteDraw);
     socketService.on('whiteboard-clear', handleRemoteClear);
+    socketService.on('whiteboard-state', handleRemoteState);
+    socketService.requestWhiteboardState();
 
     return () => {
       resizeObserver.disconnect();
       socketService.off('whiteboard-draw', handleRemoteDraw);
       socketService.off('whiteboard-clear', handleRemoteClear);
+      socketService.off('whiteboard-state', handleRemoteState);
     };
-  }, [drawSegment]);
+  }, [drawNormalizedStroke]);
 
   const getCanvasPosition = (event, canvas) => {
     const rect = canvas.getBoundingClientRect();
@@ -111,10 +144,10 @@ export function WhiteboardPanel({ onSaveWhiteboard }) {
 
     // Broadcast stroke to room peers in real-time
     socketService.sendWhiteboardDraw({
-      x0,
-      y0,
-      x1,
-      y1,
+      x0: x0 / canvas.width,
+      y0: y0 / canvas.height,
+      x1: x1 / canvas.width,
+      y1: y1 / canvas.height,
       color,
       brushSize,
       mode,

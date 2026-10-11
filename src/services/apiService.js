@@ -83,6 +83,29 @@ class ApiService {
     }
   }
 
+  async refreshRoomAccessToken(roomId) {
+    const access = this.getRoomAccessToken(roomId);
+    if (!roomId || !access?.refreshToken) return null;
+
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/rooms/${encodeURIComponent(roomId)}/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'X-Room-Refresh-Token': access.refreshToken },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.accessToken) {
+        throw new Error(data.message || `Room access refresh failed with status ${response.status}`);
+      }
+      const refreshedAccess = { ...access, token: data.accessToken };
+      this.setRoomAccessToken(roomId, refreshedAccess);
+      return refreshedAccess;
+    } catch (error) {
+      console.warn('[API] Could not refresh room access:', error.message);
+      return null;
+    }
+  }
+
   clearActiveRoomAccess() {
     try {
       sessionStorage.removeItem(ACTIVE_ROOM_KEY);
@@ -105,6 +128,12 @@ class ApiService {
       let response = await sendRequest();
       if (response.status === 401 && canRefresh && await this.refreshAccessToken()) {
         response = await sendRequest();
+      }
+      if (response.status === 401) {
+        const activeRoomId = sessionStorage.getItem(ACTIVE_ROOM_KEY);
+        if (activeRoomId && await this.refreshRoomAccessToken(activeRoomId)) {
+          response = await sendRequest();
+        }
       }
 
       const data = await response.json().catch(() => ({}));
@@ -245,10 +274,18 @@ class ApiService {
 
   // --- Rooms API ---
   async createRoom(roomData) {
-    return await this.request('/api/rooms/create', {
+    const result = await this.request('/api/rooms/create', {
       method: 'POST',
       body: JSON.stringify(roomData),
     });
+    const access = {
+      token: result.accessToken,
+      refreshToken: result.refreshToken,
+      role: 'host',
+      participantId: result.room.hostId,
+    };
+    this.setActiveRoomAccess(result.room.roomId, access);
+    return { ...result, access };
   }
 
   async createGuestRoom({ title, hostName }) {
@@ -256,7 +293,12 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ title, hostName }),
     });
-    const access = { token: result.accessToken, role: 'host', participantId: result.room.hostId };
+    const access = {
+      token: result.accessToken,
+      refreshToken: result.refreshToken,
+      role: 'host',
+      participantId: result.room.hostId,
+    };
     this.setActiveRoomAccess(result.room.roomId, access);
     return { ...result, access };
   }
@@ -266,7 +308,12 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ name }),
     });
-    const access = { token: result.accessToken, role: 'participant', participantId: result.participant.id };
+    const access = {
+      token: result.accessToken,
+      refreshToken: result.refreshToken,
+      role: result.role,
+      participantId: result.participant.id,
+    };
     this.setActiveRoomAccess(roomId, access);
     return { ...result, access };
   }
@@ -277,6 +324,10 @@ class ApiService {
 
   async getRoomState(roomId) {
     return await this.request(`/api/rooms/${encodeURIComponent(roomId)}/state`, { method: 'GET' });
+  }
+
+  async getRoomIceConfig(roomId) {
+    return await this.request(`/api/rooms/${encodeURIComponent(roomId)}/ice-config`, { method: 'GET' });
   }
 
   // --- AI API ---
@@ -357,7 +408,12 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(meeting),
     });
-    const access = { token: result.accessToken, role: 'host', participantId: result.meeting.createdBy };
+    const access = {
+      token: result.accessToken,
+      refreshToken: result.refreshToken,
+      role: 'host',
+      participantId: result.meeting.createdBy,
+    };
     this.setActiveRoomAccess(result.meeting.roomId, access);
     return { ...result, access };
   }

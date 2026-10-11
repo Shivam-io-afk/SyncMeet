@@ -21,6 +21,11 @@ import { ThemeProvider } from './context/ThemeContext';
 
 const ACTIVE_MEETING_KEY = 'syncmeet_active_meeting_v1';
 
+function normalizeMeetingStartTime(value) {
+  const timestamp = typeof value === 'number' ? value : Date.parse(value);
+  return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : null;
+}
+
 function getSavedMeetingSession() {
   try {
     const saved = sessionStorage.getItem(ACTIVE_MEETING_KEY);
@@ -43,11 +48,13 @@ function getSavedMeetingSession() {
       isHost: Boolean(parsed.isHost),
       role: typeof parsed.role === 'string' ? parsed.role : 'guest',
       title: typeof parsed.title === 'string' ? parsed.title : '',
+      meetingStartedAt: normalizeMeetingStartTime(parsed.meetingStartedAt),
       agenda: Array.isArray(parsed.agenda) ? parsed.agenda : [],
       templateId: typeof parsed.templateId === 'string' ? parsed.templateId : 'general',
       parentRoomId: typeof parsed.parentRoomId === 'string' ? parsed.parentRoomId : '',
       groupName: typeof parsed.groupName === 'string' ? parsed.groupName : '',
       roomAccessToken: typeof parsed.roomAccessToken === 'string' ? parsed.roomAccessToken : '',
+      roomRefreshToken: typeof parsed.roomRefreshToken === 'string' ? parsed.roomRefreshToken : '',
     };
   } catch (err) {
     console.warn('Could not restore the active meeting:', err);
@@ -129,22 +136,29 @@ function AppContent() {
 
     const accessRoomId = session.parentRoomId || session.roomId;
     if (session.roomAccessToken) {
-      apiService.setActiveRoomAccess(accessRoomId, {
-        token: session.roomAccessToken,
-        role: session.isHost ? 'host' : 'participant',
-      });
+      const storedAccess = apiService.getRoomAccessToken(accessRoomId);
+      if (!storedAccess?.refreshToken) {
+        apiService.setActiveRoomAccess(accessRoomId, {
+          token: session.roomAccessToken,
+          refreshToken: session.roomRefreshToken || '',
+          role: session.isHost ? 'host' : 'participant',
+        });
+      }
     }
+    const storedAccess = apiService.getRoomAccessToken(accessRoomId);
     sessionStorage.setItem(ACTIVE_MEETING_KEY, JSON.stringify({
       roomId: session.roomId,
       userName: session.userName,
       isHost: Boolean(session.isHost),
       role: session.role || 'guest',
       title: session.title || '',
+      meetingStartedAt: session.meetingStartedAt || Date.now(),
       agenda: session.agenda || [],
       templateId: session.templateId || 'general',
       parentRoomId: session.parentRoomId || '',
       groupName: session.groupName || '',
-      roomAccessToken: session.roomAccessToken || '',
+      roomAccessToken: storedAccess?.token || session.roomAccessToken || '',
+      roomRefreshToken: storedAccess?.refreshToken || session.roomRefreshToken || '',
     }));
   }, [session]);
 
@@ -163,6 +177,9 @@ function AppContent() {
           return {
             ...prev,
             title: res.state.title || prev.title,
+            meetingStartedAt: normalizeMeetingStartTime(res.state.createdAt)
+              || prev.meetingStartedAt
+              || Date.now(),
             agenda: res.state.agenda || prev.agenda,
             isHost: res.state.caller?.isHost ?? prev.isHost,
             role: res.state.caller?.role ?? prev.role,
@@ -187,6 +204,11 @@ function AppContent() {
 
   // 6. Hardware Media Devices Hook
   const mediaState = useMediaDevices({ enabled: viewMode !== 'login' });
+  useEffect(() => {
+    if (session && mediaState.permissionError) {
+      showNotification('A microphone or camera became unavailable. Check the device and retry from device settings.');
+    }
+  }, [session?.roomId, mediaState.permissionError, showNotification]);
   const mediaStateRef = useRef(mediaState);
   mediaStateRef.current = mediaState;
   const currentUserRef = useRef(currentUser);
@@ -300,20 +322,28 @@ function AppContent() {
     const meetingRoomId = snapshot?.session?.parentRoomId || snapshot?.session?.roomId;
     if (!meetingRoomId || (snapshot.session.role !== 'host' && !snapshot.session.isHost)) return;
     try {
+      let transcriptHistory = snapshot.transcripts;
+      try {
+        transcriptHistory = await dbService.getTranscriptHistory(meetingRoomId);
+      } catch (error) {
+        console.warn('Complete local transcript unavailable for archive; saving the in-memory transcript window:', error.message);
+      }
       await apiService.saveMeeting({
         roomId: meetingRoomId,
         title: snapshot.session.title || `Meeting ${meetingRoomId}`,
         hostName: snapshot.currentUser?.name || snapshot.session.userName,
-        transcripts: snapshot.transcripts,
+        transcripts: transcriptHistory,
         aiNotes: snapshot.notesData,
       });
     } catch (e) {
       console.warn('Save history on exit warning:', e);
+      showNotification('The server archive could not be saved. A transcript copy may still be available on this device.');
     }
-  }, []);
+  }, [showNotification]);
 
   const finishMeeting = useCallback(async () => {
     socketService.leaveRoom();
+    mediaState.stopLocalMedia();
     try {
       await saveMeetingHistory();
     } catch (e) {
@@ -328,7 +358,14 @@ function AppContent() {
     clearTranscripts();
     setMeetingDataReady(false);
     setSession(null);
-  }, [clearTranscripts, saveMeetingHistory]);
+    if (viewMode !== 'login') mediaState.resumeLocalMedia();
+  }, [
+    clearTranscripts,
+    mediaState.resumeLocalMedia,
+    mediaState.stopLocalMedia,
+    saveMeetingHistory,
+    viewMode,
+  ]);
 
   const handleClearTranscripts = useCallback(async () => {
     const meetingRoomId = session?.parentRoomId || session?.roomId;
@@ -397,6 +434,7 @@ function AppContent() {
     const hostStatus = sessionData.roomAccessRole === 'host';
     const finalSession = {
       ...sessionData,
+      meetingStartedAt: normalizeMeetingStartTime(sessionData.meetingStartedAt) || Date.now(),
       isHost: hostStatus,
       role: hostStatus ? 'host' : (joiningUser?.role || 'guest'),
     };
@@ -405,6 +443,7 @@ function AppContent() {
     if (finalSession.roomAccessToken) {
       apiService.setActiveRoomAccess(finalSession.parentRoomId || finalSession.roomId, {
         token: finalSession.roomAccessToken,
+        refreshToken: finalSession.roomRefreshToken || '',
         role: hostStatus ? 'host' : 'participant',
       });
     }
@@ -440,6 +479,7 @@ function AppContent() {
     const joiningUser = currentUser || cryptoAuthService.createGuestSession(newSession.userName);
     if (!currentUser) setCurrentUser(joiningUser);
     let meetingSession = newSession;
+    let meetingStartedAt = normalizeMeetingStartTime(newSession.meetingStartedAt);
     if (!newSession.title) {
       try {
         const { meeting } = await apiService.getScheduledMeeting(newSession.roomId);
@@ -463,10 +503,12 @@ function AppContent() {
         hostName: meetingSession.userName || joiningUser.name,
       });
       meetingSession = { ...meetingSession, roomId: created.room.roomId, title: created.room.title };
+      meetingStartedAt = normalizeMeetingStartTime(created.room.createdAt) || meetingStartedAt;
       setIsRoomLocked(Boolean(created.room.isLocked));
       access = created.access;
     } else if (!access || access.role !== 'host') {
       const joined = await apiService.joinMeetingRoom(meetingSession.roomId, meetingSession.userName || joiningUser.name);
+      meetingStartedAt = normalizeMeetingStartTime(joined.createdAt) || meetingStartedAt;
       access = joined.access;
       meetingSession = { ...meetingSession, requiresAdmission: joined.requiresAdmission };
     } else {
@@ -475,9 +517,11 @@ function AppContent() {
 
     const sessionWithUser = {
       ...meetingSession,
+      meetingStartedAt: meetingStartedAt || Date.now(),
       isHost: access.role === 'host',
       roomAccessRole: access.role,
       roomAccessToken: access.token,
+      roomRefreshToken: access.refreshToken || '',
       joiningUser,
     };
     const isHost = access.role === 'host';
@@ -576,6 +620,31 @@ function AppContent() {
       showNotification(message || 'The meeting control could not be completed.');
     };
 
+    const handleHostRoleAssigned = ({ roomId, access }) => {
+      const activeRoomId = session.parentRoomId || session.roomId;
+      if (roomId !== activeRoomId || !access?.accessToken || !access?.refreshToken) return;
+      const roomAccess = {
+        token: access.accessToken,
+        refreshToken: access.refreshToken,
+        role: 'host',
+        participantId: currentUserRef.current?.id || '',
+      };
+      apiService.setActiveRoomAccess(roomId, roomAccess);
+      setSession((current) => current ? {
+        ...current,
+        isHost: true,
+        role: 'host',
+        roomAccessRole: 'host',
+        roomAccessToken: access.accessToken,
+        roomRefreshToken: access.refreshToken,
+      } : current);
+      showNotification('You are now the meeting host.');
+    };
+
+    const handleRoomHostChanged = ({ hostId, hostName }) => {
+      setSession((current) => current ? { ...current, hostId, hostName } : current);
+    };
+
     const handleMeetingEnded = () => {
       showNotification('The meeting was ended by the host.');
       void finishMeeting();
@@ -627,6 +696,9 @@ function AppContent() {
     socketService.on('local-media-state', handleLocalMediaState);
     socketService.on('media-state-persistence-error', handleMediaStatePersistenceError);
     socketService.on('room-control-error', handleRoomControlError);
+    socketService.on('host-role-assigned', handleHostRoleAssigned);
+    socketService.on('room-host-changed', handleRoomHostChanged);
+    socketService.on('room-host-transfer-error', handleRoomControlError);
     socketService.on('meeting-ended-by-host', handleMeetingEnded);
     socketService.on('knock-request', handleKnockRequest);
     socketService.on('breakout-assignment', handleBreakoutAssignment);
@@ -650,6 +722,9 @@ function AppContent() {
       socketService.off('local-media-state', handleLocalMediaState);
       socketService.off('media-state-persistence-error', handleMediaStatePersistenceError);
       socketService.off('room-control-error', handleRoomControlError);
+      socketService.off('host-role-assigned', handleHostRoleAssigned);
+      socketService.off('room-host-changed', handleRoomHostChanged);
+      socketService.off('room-host-transfer-error', handleRoomControlError);
       socketService.off('meeting-ended-by-host', handleMeetingEnded);
       socketService.off('knock-request', handleKnockRequest);
       socketService.off('breakout-assignment', handleBreakoutAssignment);

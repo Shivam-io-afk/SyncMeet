@@ -43,12 +43,31 @@ class DatabaseService {
       };
 
       request.onsuccess = (event) => {
-        this.db = event.target.result;
-        resolve(this.db);
+        const db = event.target.result;
+        this.db = db;
+        db.onversionchange = () => {
+          db.close();
+          if (this.db === db) {
+            this.db = null;
+            this.initPromise = null;
+          }
+        };
+        this.initPromise = Promise.resolve(db);
+        resolve(db);
+      };
+
+      request.onblocked = () => {
+        const error = new Error(
+          'IndexedDB upgrade is blocked by another open SyncMeet tab. Close other tabs and try again.'
+        );
+        console.error('[DB] IndexedDB upgrade blocked:', error.message);
+        this.initPromise = null;
+        reject(error);
       };
 
       request.onerror = (event) => {
         console.error('IndexedDB open failed:', event.target.error);
+        this.initPromise = null;
         reject(event.target.error);
       };
     });
@@ -56,15 +75,37 @@ class DatabaseService {
 
   async getDB() {
     if (!this.db) {
+      if (!this.initPromise) this.initPromise = this.initDB();
       await this.initPromise;
     }
     return this.db;
   }
 
+  async getTranscriptHistory(roomId) {
+    const db = await this.getDB();
+    if (!db) throw new Error('IndexedDB is unavailable; the complete local transcript cannot be loaded.');
+
+    return new Promise((resolve, reject) => {
+      let request;
+      try {
+        request = db.transaction('transcripts', 'readonly')
+          .objectStore('transcripts')
+          .index('roomId')
+          .getAll(roomId);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+      request.onsuccess = () => resolve((request.result || [])
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)));
+      request.onerror = (event) => reject(event.target.error);
+    });
+  }
+
   // Save or update a meeting room record
   async saveRoom(roomData) {
     const db = await this.getDB();
-    if (!db) return null;
+    if (!db) throw new Error('IndexedDB is unavailable; the meeting room was not saved locally.');
 
     return new Promise((resolve, reject) => {
       const tx = db.transaction('rooms', 'readwrite');
@@ -95,7 +136,7 @@ class DatabaseService {
   // Save a transcript chunk
   async saveTranscript(roomId, transcript) {
     const db = await this.getDB();
-    if (!db) return null;
+    if (!db) throw new Error('IndexedDB is unavailable; the transcript entry was not saved locally.');
 
     return new Promise((resolve, reject) => {
       const tx = db.transaction('transcripts', 'readwrite');
@@ -128,7 +169,7 @@ class DatabaseService {
     }
 
     const db = await this.getDB();
-    if (!db) return null;
+    if (!db) throw new Error('IndexedDB is unavailable; the AI notes were not saved locally.');
 
     return new Promise((resolve, reject) => {
       const tx = db.transaction('ai_notes', 'readwrite');

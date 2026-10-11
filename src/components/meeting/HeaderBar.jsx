@@ -30,6 +30,7 @@ async function copyToClipboard(text) {
 
 export function HeaderBar({ 
   roomId, 
+  meetingStartedAt,
   participantCount = 1, 
   isTranscribing = false,
   transcriptionError = '',
@@ -43,20 +44,31 @@ export function HeaderBar({
   userMenu = null,
 }) {
   const [copied, setCopied] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
+    const startedAt = typeof meetingStartedAt === 'number'
+      ? meetingStartedAt
+      : Date.parse(meetingStartedAt);
+    return Number.isFinite(startedAt) ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0;
+  });
   const [copyStatus, setCopyStatus] = useState('');
   const copyStatusTimer = useRef(null);
 
-  // Live meeting duration counter
+  // Calculate from the meeting start time so reloads do not reset the duration.
   useEffect(() => {
-    const timer = setInterval(() => {
-      setElapsedSeconds(prev => prev + 1);
-    }, 1000);
+    const parsedStartTime = typeof meetingStartedAt === 'number'
+      ? meetingStartedAt
+      : Date.parse(meetingStartedAt);
+    const startedAt = Number.isFinite(parsedStartTime) ? parsedStartTime : Date.now();
+    const updateElapsedTime = () => {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+    };
+    updateElapsedTime();
+    const timer = setInterval(updateElapsedTime, 1000);
     return () => {
       clearInterval(timer);
       clearTimeout(copyStatusTimer.current);
     };
-  }, []);
+  }, [meetingStartedAt]);
 
   const showCopyStatus = (message) => {
     setCopyStatus(message);

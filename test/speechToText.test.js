@@ -3,7 +3,19 @@ import { test } from 'node:test';
 import {
   getSpeechRecognitionErrorMessage,
   getSpeechRecognitionRetryDelay,
+  keepRecentTranscripts,
 } from '../src/hooks/useSpeechToText.js';
+
+test('in-memory transcript history retains only the latest 1,000 entries', () => {
+  const transcripts = Array.from({ length: 1_005 }, (_, index) => ({ id: index }));
+
+  const recent = keepRecentTranscripts(transcripts);
+
+  assert.equal(recent.length, 1_000);
+  assert.equal(recent[0].id, 5);
+  assert.equal(recent.at(-1).id, 1_004);
+  assert.equal(transcripts.length, 1_005, 'the source array should not be mutated');
+});
 
 test('speech recognition permission and device failures provide actionable guidance', () => {
   for (const error of ['not-allowed', 'service-not-allowed']) {

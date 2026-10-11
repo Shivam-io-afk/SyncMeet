@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { verifySocketRoomAccess } from '../middleware/roomAccessMiddleware.js';
+import { issueRoomCredentials, verifySocketRoomAccess } from '../middleware/roomAccessMiddleware.js';
 import { Room } from '../models/Room.js';
 import { BreakoutSession } from '../models/BreakoutSession.js';
 import { MeetingAgenda } from '../models/MeetingAgenda.js';
@@ -30,6 +30,8 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
   const admittedKnocks = new Map();
   const roomLocks = new Map();
   const roomChatHistory = new Map();
+  const whiteboardStrokes = new Map();
+  const MAX_WHITEBOARD_STROKES = 2_000;
   const pendingDisconnects = new Map();
   const removePendingKnock = (roomId, socketId) => {
     const requests = pendingKnocks.get(roomId);
@@ -243,6 +245,127 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
     io.to(parentRoomId).emit('breakout-updated', { breakout: { id: breakoutId, status: 'ended' } });
     return true;
   };
+  const transferRoomHost = async (parentRoomId, leavingParticipantId) => {
+    if (!parentRoomId || !leavingParticipantId) return false;
+
+    try {
+      const room = isDbConnected()
+        ? await Room.findOne({ roomId: parentRoomId, isActive: true })
+          .select('hostId hostName')
+          .lean()
+        : inMemoryRooms.get(parentRoomId);
+      if (!room || String(room.hostId) !== String(leavingParticipantId)) return false;
+
+      const breakout = breakouts.get(parentRoomId);
+      const activeRoomIds = [
+        parentRoomId,
+        ...(breakout?.groups.map((group) => group.roomId) || []),
+      ];
+      const candidates = activeRoomIds.flatMap((roomId) => (
+        Array.from(rooms.get(roomId)?.entries() || [])
+          .filter(([socketId, participant]) => (
+            String(participant.user?.id) !== String(leavingParticipantId)
+            && !participant.isDisconnected
+            && io.sockets.sockets.has(socketId)
+          ))
+          .map(([socketId, participant]) => ({ roomId, socketId, participant }))
+      ));
+      candidates.sort((first, second) => {
+        const firstJoinedAt = new Date(first.participant.joinedAt).getTime();
+        const secondJoinedAt = new Date(second.participant.joinedAt).getTime();
+        const firstTime = Number.isFinite(firstJoinedAt) ? firstJoinedAt : Number.MAX_SAFE_INTEGER;
+        const secondTime = Number.isFinite(secondJoinedAt) ? secondJoinedAt : Number.MAX_SAFE_INTEGER;
+        return firstTime - secondTime || first.socketId.localeCompare(second.socketId);
+      });
+      const successor = candidates[0];
+      if (!successor) return false;
+
+      const successorUser = successor.participant.user;
+      const successorId = String(successorUser.id);
+      const successorName = successorUser.name || 'Meeting Host';
+      const access = issueRoomCredentials({
+        roomId: parentRoomId,
+        participantId: successorId,
+        role: 'host',
+        displayName: successorName,
+        ...(successorUser.accountId ? { accountId: String(successorUser.accountId) } : {}),
+      });
+
+      if (isDbConnected()) {
+        const result = await Room.updateOne(
+          { roomId: parentRoomId, hostId: String(leavingParticipantId), isActive: true },
+          { $set: { hostId: successorId, hostName: successorName } }
+        );
+        if (result.matchedCount !== 1) return false;
+        if (successorUser.accountId) {
+          try {
+            await MeetingAttendance.updateOne(
+              { roomId: parentRoomId, userId: String(successorUser.accountId), leftAt: null },
+              { $set: { role: 'host', hostName: successorName } }
+            );
+          } catch (error) {
+            console.error('Persist transferred host attendance role error:', error);
+          }
+        }
+      } else {
+        const roomState = inMemoryRooms.get(parentRoomId);
+        if (!roomState || String(roomState.hostId) !== String(leavingParticipantId)) return false;
+        roomState.hostId = successorId;
+        roomState.hostName = successorName;
+        if (successorUser.accountId) {
+          const attendance = inMemoryMeetingAttendance.get(
+            `${parentRoomId}:${successorUser.accountId}`
+          );
+          if (attendance) {
+            attendance.role = 'host';
+            attendance.hostName = successorName;
+          }
+        }
+      }
+
+      for (const roomId of activeRoomIds) {
+        for (const participant of rooms.get(roomId)?.values() || []) {
+          if (String(participant.user?.id) !== String(leavingParticipantId)) continue;
+          participant.user = { ...participant.user, role: 'participant' };
+          const participantSocket = io.sockets.sockets.get(participant.socketId);
+          if (participantSocket) participantSocket.user = { ...participantSocket.user, role: 'participant' };
+        }
+      }
+
+      if (successor.roomId !== parentRoomId && breakout) {
+        closeBreakout(parentRoomId, breakout.id);
+      }
+
+      const successorSocket = io.sockets.sockets.get(successor.socketId);
+      const promotedParticipant = rooms.get(parentRoomId)?.get(successor.socketId);
+      if (!successorSocket || !promotedParticipant) {
+        return transferRoomHost(parentRoomId, successorId);
+      }
+      promotedParticipant.user = { ...promotedParticipant.user, role: 'host' };
+      successorSocket.user = { ...successorSocket.user, role: 'host' };
+
+      successorSocket.emit('host-role-assigned', { roomId: parentRoomId, access });
+      emitToMeeting(parentRoomId, 'room-host-changed', {
+        hostId: successorId,
+        hostName: successorName,
+      });
+      const pendingRequests = pendingKnocks.get(parentRoomId);
+      for (const [applicantSocketId, request] of pendingRequests || []) {
+        successorSocket.emit('knock-request', {
+          applicantSocketId,
+          user: request.user,
+          timestamp: request.timestamp,
+        });
+      }
+      return true;
+    } catch (error) {
+      console.error('Automatic room host transfer failed:', error);
+      emitToMeeting(parentRoomId, 'room-host-transfer-error', {
+        message: 'Automatic host transfer failed. The meeting is still active, but host controls may be unavailable.',
+      });
+      return false;
+    }
+  };
 
   io.on('connection', (socket) => {
     console.log(`⚡ [Socket.io] Client connected: ${socket.id}`);
@@ -407,6 +530,11 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
         room.isLocked = roomLocks.get(resolvedParentRoomId);
       } else if (room?.isLocked) {
         roomLocks.set(resolvedParentRoomId, true);
+      }
+      if (room?.hostId) {
+        const isCurrentHost = String(room.hostId) === String(access.participantId)
+          || String(room.hostId) === String(access.accountId || '');
+        access = { ...access, role: isCurrentHost ? 'host' : 'participant' };
       }
       const savedParticipant = room?.participants?.find(
         (participant) => String(participant.userId) === String(access.participantId)
@@ -596,6 +724,7 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
       socket.emit('room-peers', { peers: existingPeers });
       socket.emit('local-media-state', mediaState);
       socket.emit('room-lock-status', { isLocked: Boolean(room?.isLocked) });
+      socket.emit('whiteboard-state', { strokes: whiteboardStrokes.get(roomId) || [] });
       const recentChat = roomChatHistory.get(resolvedParentRoomId) || [];
       if (recentChat.length > 0) {
         socket.emit('room-chat-history', { messages: recentChat });
@@ -736,11 +865,11 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
     socket.on('whiteboard-draw', (strokeData) => {
       if (!socket.roomId || !rooms.get(socket.roomId)?.has(socket.id)) return;
       const values = ['x0', 'y0', 'x1', 'y1'].map((key) => strokeData?.[key]);
-      if (!values.every((value) => Number.isFinite(value) && value >= 0 && value <= 10_000)
+      if (!values.every((value) => Number.isFinite(value) && value >= 0 && value <= 1)
         || typeof strokeData.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(strokeData.color)
         || !Number.isFinite(strokeData.brushSize) || strokeData.brushSize < 1 || strokeData.brushSize > 30
         || !['pen', 'eraser'].includes(strokeData.mode)) return;
-      socket.to(socket.roomId).emit('whiteboard-draw', {
+      const stroke = {
         x0: values[0],
         y0: values[1],
         x1: values[2],
@@ -748,11 +877,24 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
         color: strokeData.color,
         brushSize: strokeData.brushSize,
         mode: strokeData.mode,
-      });
+      };
+      const strokes = whiteboardStrokes.get(socket.roomId) || [];
+      strokes.push(stroke);
+      if (strokes.length > MAX_WHITEBOARD_STROKES) strokes.splice(0, strokes.length - MAX_WHITEBOARD_STROKES);
+      whiteboardStrokes.set(socket.roomId, strokes);
+      socket.to(socket.roomId).emit('whiteboard-draw', stroke);
     });
 
     socket.on('whiteboard-clear', () => {
-      if (socket.roomId && rooms.get(socket.roomId)?.has(socket.id)) socket.to(socket.roomId).emit('whiteboard-clear');
+      if (socket.roomId && rooms.get(socket.roomId)?.has(socket.id)) {
+        whiteboardStrokes.delete(socket.roomId);
+        socket.to(socket.roomId).emit('whiteboard-clear');
+      }
+    });
+
+    socket.on('whiteboard-request-state', () => {
+      if (!socket.roomId || !rooms.get(socket.roomId)?.has(socket.id)) return;
+      socket.emit('whiteboard-state', { strokes: whiteboardStrokes.get(socket.roomId) || [] });
     });
 
     // 8. Live Closed Captions Stream Broadcast
@@ -1063,6 +1205,8 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
           io.sockets.sockets.get(participantSocketId)?.leave(parentRoomId);
         }
         rooms.delete(parentRoomId);
+        whiteboardStrokes.delete(parentRoomId);
+        for (const group of breakout?.groups || []) whiteboardStrokes.delete(group.roomId);
         const room = inMemoryRooms.get(parentRoomId);
         if (room) {
           room.isActive = false;
@@ -1135,6 +1279,7 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
           console.error('Persist meeting attendance leave error:', error);
         }
       }
+      await transferRoomHost(parentRoomId, leavingUser?.id);
       if (parentRoomId && leavingUser?.id) {
         try {
           await removeParticipantState(parentRoomId, leavingUser.id, socket.id);
@@ -1239,6 +1384,7 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
                 console.error('Persist meeting attendance end error:', error);
               }
             }
+            if (isRoomActive) await transferRoomHost(parentRoomId, socket.user?.id);
             return;
           }
 
@@ -1307,6 +1453,7 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
                 console.error('Persist meeting attendance end error:', error);
               }
             }
+            if (removedParticipant) await transferRoomHost(parentRoomId, capturedUser?.id);
           }, disconnectGracePeriodMs);
           timer.unref();
 

@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+const MESH_VIDEO_CONSTRAINTS = {
+  width: { ideal: 640, max: 640 },
+  height: { ideal: 360, max: 360 },
+  frameRate: { ideal: 24, max: 24 },
+};
+
 export function useMediaDevices({ enabled = true } = {}) {
   const [stream, setStream] = useState(null);
   const [audioDevices, setAudioDevices] = useState([]);
@@ -66,7 +72,10 @@ export function useMediaDevices({ enabled = true } = {}) {
       try {
         const constraints = {
           audio: audioId ? { deviceId: { exact: audioId } } : true,
-          video: videoId ? { deviceId: { exact: videoId } } : true,
+          video: {
+            ...MESH_VIDEO_CONSTRAINTS,
+            ...(videoId ? { deviceId: { exact: videoId } } : {}),
+          },
         };
         userStream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (err1) {
@@ -76,7 +85,7 @@ export function useMediaDevices({ enabled = true } = {}) {
         try {
           userStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
-            video: true,
+            video: { ...MESH_VIDEO_CONSTRAINTS },
           });
         } catch (err2) {
           console.warn('Tier 2 audio+video failed, attempting Tier 3 audio-only fallback:', err2);
@@ -101,6 +110,20 @@ export function useMediaDevices({ enabled = true } = {}) {
         streamRef.current = userStream;
         setStream(userStream);
         setPermissionError(null);
+        userStream.getTracks().forEach((track) => {
+          track.addEventListener('ended', () => {
+            if (streamRef.current !== userStream) return;
+            if (track.kind === 'audio') {
+              const hasLiveAudio = userStream.getAudioTracks().some((item) => item.readyState === 'live');
+              if (!hasLiveAudio) setIsAudioMuted(true);
+              setPermissionError('AudioCaptureError');
+            } else if (track.kind === 'video') {
+              const hasLiveVideo = userStream.getVideoTracks().some((item) => item.readyState === 'live');
+              if (!hasLiveVideo) setIsVideoDisabled(true);
+              setPermissionError('VideoCaptureError');
+            }
+          }, { once: true });
+        });
 
         // Apply initial mute/video disable preferences
         userStream.getAudioTracks().forEach(track => { track.enabled = !isAudioMuted; });
@@ -112,6 +135,7 @@ export function useMediaDevices({ enabled = true } = {}) {
         await refreshDevices();
       } else if (acquisitionError) {
         setPermissionError(acquisitionError);
+        setIsAudioMuted(true);
         setIsVideoDisabled(true);
       }
     } catch (err) {
@@ -143,7 +167,12 @@ export function useMediaDevices({ enabled = true } = {}) {
     }
 
     const handleDeviceChange = () => {
-      if (enabled) refreshDevices();
+      if (!enabled) return;
+      const activeStream = streamRef.current;
+      if (activeStream?.getTracks().some((track) => track.readyState === 'ended')) {
+        void startStreamRef.current();
+      }
+      void refreshDevices();
     };
 
     navigator.mediaDevices?.addEventListener?.('devicechange', handleDeviceChange);
@@ -166,20 +195,27 @@ export function useMediaDevices({ enabled = true } = {}) {
 
   // Toggle Audio Track without re-requesting stream
   const toggleAudio = useCallback(() => {
-    if (streamRef.current) {
-      const newMuted = !isAudioMuted;
-      streamRef.current.getAudioTracks().forEach(track => {
-        track.enabled = !newMuted;
-      });
-      setIsAudioMuted(newMuted);
-    } else {
-      setIsAudioMuted(prev => !prev);
+    const audioTracks = streamRef.current?.getAudioTracks()
+      .filter((track) => track.readyState === 'live') || [];
+    if (!audioTracks.length && isAudioMuted) {
+      setPermissionError('AudioCaptureError');
+      return;
     }
+    const newMuted = !isAudioMuted;
+    audioTracks.forEach((track) => { track.enabled = !newMuted; });
+    setIsAudioMuted(newMuted);
   }, [isAudioMuted]);
 
   const setAudioMuted = useCallback((muted) => {
     if (typeof muted !== 'boolean') return;
-    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !muted; });
+    const audioTracks = streamRef.current?.getAudioTracks()
+      .filter((track) => track.readyState === 'live') || [];
+    if (!muted && audioTracks.length === 0) {
+      setPermissionError('AudioCaptureError');
+      setIsAudioMuted(true);
+      return;
+    }
+    audioTracks.forEach((track) => { track.enabled = !muted; });
     setIsAudioMuted(muted);
   }, []);
 
@@ -199,7 +235,10 @@ export function useMediaDevices({ enabled = true } = {}) {
     setIsLoading(true);
     try {
       const videoStream = await navigator.mediaDevices.getUserMedia({
-        video: selectedVideoId ? { deviceId: { exact: selectedVideoId } } : true,
+        video: {
+          ...MESH_VIDEO_CONSTRAINTS,
+          ...(selectedVideoId ? { deviceId: { exact: selectedVideoId } } : {}),
+        },
       });
       if (!isMountedRef.current) {
         videoStream.getTracks().forEach(track => track.stop());
@@ -240,6 +279,22 @@ export function useMediaDevices({ enabled = true } = {}) {
       if (track.readyState !== 'ended') track.stop();
     });
   }, []);
+
+  const stopLocalMedia = useCallback(() => {
+    streamRequestIdRef.current += 1;
+    isAcquiringRef.current = false;
+    const localStream = streamRef.current;
+    const displayStream = screenStreamRef.current;
+    streamRef.current = null;
+    screenStreamRef.current = null;
+    localStream?.getTracks().forEach((track) => track.stop());
+    displayStream?.getTracks().forEach((track) => track.stop());
+    setStream(null);
+    setScreenStream(null);
+    setIsScreenSharing(false);
+  }, []);
+
+  const resumeLocalMedia = useCallback(() => startStreamRef.current(), []);
 
   // Toggle Screen Sharing
   const toggleScreenShare = useCallback(async () => {
@@ -314,6 +369,8 @@ export function useMediaDevices({ enabled = true } = {}) {
     toggleVideo,
     setVideoDisabled,
     toggleScreenShare,
+    stopLocalMedia,
+    resumeLocalMedia,
     switchAudioDevice,
     switchVideoDevice,
     retryStream: startStream,

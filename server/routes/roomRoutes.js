@@ -3,7 +3,12 @@ import express from 'express';
 import { Room } from '../models/Room.js';
 import { isDbConnected } from '../config/db.js';
 import { optionalProtect, protect } from '../middleware/authMiddleware.js';
-import { issueRoomAccessToken, requireRoomAccess } from '../middleware/roomAccessMiddleware.js';
+import {
+  issueRoomAccessToken,
+  issueRoomCredentials,
+  requireRoomAccess,
+  verifyRoomRefreshToken,
+} from '../middleware/roomAccessMiddleware.js';
 import { ScheduledMeeting } from '../models/ScheduledMeeting.js';
 import { BreakoutSession } from '../models/BreakoutSession.js';
 import { inMemoryRooms, scheduledMeetings, breakoutSessions } from '../store/memoryMeetingStore.js';
@@ -51,14 +56,14 @@ router.post('/create', protect, async (req, res) => {
   try {
     if (isDbConnected()) {
       const room = await Room.create(roomData);
-      const accessToken = issueRoomAccessToken({
+      const credentials = issueRoomCredentials({
         roomId: finalRoomId,
         participantId: String(hostUser.id || hostUser._id),
         role: 'host',
         displayName: hostUser.name || 'Meeting Host',
         accountId: String(hostUser.id || hostUser._id),
       });
-      return res.status(201).json({ success: true, room, accessToken });
+      return res.status(201).json({ success: true, room, ...credentials });
     }
     // In-memory fallback
     // In-memory fallback
@@ -66,14 +71,14 @@ router.post('/create', protect, async (req, res) => {
       return res.status(409).json({ success: false, message: 'That room ID is already in use' });
     }
     inMemoryRooms.set(finalRoomId, roomData);
-    const accessToken = issueRoomAccessToken({
+    const credentials = issueRoomCredentials({
       roomId: finalRoomId,
       participantId: String(hostUser.id || hostUser._id),
       role: 'host',
       displayName: hostUser.name || 'Meeting Host',
       accountId: String(hostUser.id || hostUser._id),
     });
-    return res.status(201).json({ success: true, room: roomData, accessToken });
+    return res.status(201).json({ success: true, room: roomData, ...credentials });
   } catch (error) {
     if (error?.code === 11000) {
       return res.status(409).json({ success: false, message: 'That room ID is already in use' });
@@ -113,14 +118,14 @@ router.post('/guest', optionalProtect, async (req, res) => {
     const resolvedHostName = req.user?.name || hostName;
     roomData.hostName = resolvedHostName;
     const room = isDbConnected() ? await Room.create(roomData) : (inMemoryRooms.set(roomId, roomData), roomData);
-    const accessToken = issueRoomAccessToken({
+    const credentials = issueRoomCredentials({
       roomId,
       participantId: hostId,
       role: 'host',
       displayName: resolvedHostName,
       ...(req.user ? { accountId: hostId } : {}),
     });
-    return res.status(201).json({ success: true, room, accessToken });
+    return res.status(201).json({ success: true, room, ...credentials });
   } catch (error) {
     console.error('Create guest room error:', error);
     return res.status(500).json({ success: false, message: 'Could not create meeting room' });
@@ -137,7 +142,7 @@ router.post('/:roomId/join', optionalProtect, async (req, res) => {
   }
   try {
     let room = isDbConnected()
-      ? await Room.findOne({ roomId, isActive: true }).select('roomId isLocked title hostId hostName').lean()
+      ? await Room.findOne({ roomId, isActive: true }).select('roomId isLocked title hostId hostName createdAt').lean()
       : inMemoryRooms.get(roomId);
     if (room?.isActive === false) room = null;
     const scheduledMeeting = room ? null : (isDbConnected()
@@ -150,7 +155,7 @@ router.post('/:roomId/join', optionalProtect, async (req, res) => {
     const userId = req.user ? String(req.user.id || req.user._id) : null;
     const participantId = userId || `guest-${randomUUID()}`;
     const role = isHost ? 'host' : 'participant';
-    const accessToken = issueRoomAccessToken({
+    const credentials = issueRoomCredentials({
       roomId,
       participantId,
       role,
@@ -160,14 +165,65 @@ router.post('/:roomId/join', optionalProtect, async (req, res) => {
     return res.json({
       success: true,
       participant: { id: participantId, name: isHost ? room.hostName : name },
-      accessToken,
+      ...credentials,
       role,
+      createdAt: room?.createdAt || null,
       requiresAdmission: Boolean(room?.isLocked || scheduledMeeting?.invitees?.length),
     });
   } catch (error) {
     console.error('Join room error:', error);
     return res.status(500).json({ success: false, message: 'Could not join meeting room' });
   }
+});
+
+router.post('/:roomId/refresh', async (req, res) => {
+  const { roomId } = req.params;
+  const refreshToken = req.get('x-room-refresh-token');
+  const access = verifyRoomRefreshToken(refreshToken, roomId);
+  if (!access) {
+    return res.status(401).json({ success: false, message: 'A valid room refresh token is required' });
+  }
+  try {
+    const room = isDbConnected()
+      ? await Room.findOne({ roomId, isActive: true }).select('roomId hostId hostName').lean()
+      : inMemoryRooms.get(roomId);
+    if (!room || room.isActive === false) {
+      return res.status(404).json({ success: false, message: 'Meeting room not found or no longer active' });
+    }
+    const isCurrentHost = String(room.hostId) === access.participantId
+      || String(room.hostId) === String(access.accountId || '');
+    return res.json({
+      success: true,
+      accessToken: issueRoomAccessToken({
+        ...access,
+        role: isCurrentHost ? 'host' : 'participant',
+        displayName: isCurrentHost ? room.hostName : access.displayName,
+      }),
+    });
+  } catch (error) {
+    console.error('Refresh room access error:', error);
+    return res.status(503).json({ success: false, message: 'Could not refresh meeting access' });
+  }
+});
+
+router.get('/:roomId/ice-config', requireRoomAccess, (_req, res) => {
+  const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+  ];
+  const turnUrls = (process.env.TURN_URLS || '').split(',').map((url) => url.trim()).filter(Boolean);
+  const turnUsername = process.env.TURN_USERNAME;
+  const turnCredential = process.env.TURN_CREDENTIAL;
+  if (turnUrls.length > 0 && turnUsername && turnCredential) {
+    iceServers.push({ urls: turnUrls, username: turnUsername, credential: turnCredential });
+  } else if (turnUrls.length > 0 || turnUsername || turnCredential) {
+    return res.status(503).json({
+      success: false,
+      message: 'TURN_URLS, TURN_USERNAME, and TURN_CREDENTIAL must all be configured together',
+    });
+  }
+  return res.json({ success: true, iceServers });
 });
 
 // @route   GET /api/rooms/:roomId/state
@@ -198,6 +254,9 @@ router.get('/:roomId/state', requireRoomAccess, async (req, res) => {
       activeBreakout = (breakoutSessions.get(roomId) || []).find((b) => b.status === 'active');
     }
 
+    const isCurrentHost = String(room.hostId) === access.participantId
+      || String(room.hostId) === String(access.accountId || '');
+    const effectiveRole = room.hostId ? (isCurrentHost ? 'host' : 'participant') : access.role;
     return res.json({
       success: true,
       state: {
@@ -221,8 +280,8 @@ router.get('/:roomId/state', requireRoomAccess, async (req, res) => {
         })),
         caller: {
           participantId: access.participantId,
-          role: access.role,
-          isHost: access.role === 'host',
+          role: effectiveRole,
+          isHost: effectiveRole === 'host',
           displayName: access.displayName,
         },
         activeBreakout: activeBreakout ? {

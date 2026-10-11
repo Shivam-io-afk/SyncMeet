@@ -28,12 +28,28 @@ export function issueRoomAccessToken({ roomId, participantId, role, displayName,
   );
 }
 
-export function verifyRoomAccessToken(token, roomId) {
+export function issueRoomRefreshToken({ roomId, participantId, role, displayName, accountId }) {
+  if (!JWT_SECRET) throw new Error('JWT_SECRET must be configured before issuing room refresh tokens');
+  const claims = { type: 'room-refresh', roomId, participantId, role, displayName };
+  if (typeof accountId === 'string' && accountId.trim()) claims.accountId = accountId;
+  return jwt.sign(claims, JWT_SECRET, {
+    expiresIn: process.env.ROOM_REFRESH_TOKEN_EXPIRES_IN || '30d',
+  });
+}
+
+export function issueRoomCredentials(claims) {
+  return {
+    accessToken: issueRoomAccessToken(claims),
+    refreshToken: issueRoomRefreshToken(claims),
+  };
+}
+
+function verifyRoomToken(token, roomId, type) {
   if (!JWT_SECRET || typeof token !== 'string' || !token) return null;
   try {
     const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     if (
-      payload.type !== 'room-access'
+      payload.type !== type
       || payload.roomId !== roomId
       || typeof payload.participantId !== 'string'
       || (payload.accountId !== undefined
@@ -48,6 +64,14 @@ export function verifyRoomAccessToken(token, roomId) {
   }
 }
 
+export function verifyRoomAccessToken(token, roomId) {
+  return verifyRoomToken(token, roomId, 'room-access');
+}
+
+export function verifyRoomRefreshToken(token, roomId) {
+  return verifyRoomToken(token, roomId, 'room-refresh');
+}
+
 export async function requireRoomAccess(req, res, next, { allowEnded = false } = {}) {
   const { roomId } = req.params;
   if (typeof roomId !== 'string' || !roomId.trim() || roomId.length > 120) {
@@ -57,12 +81,13 @@ export async function requireRoomAccess(req, res, next, { allowEnded = false } =
   if (!access) {
     return res.status(401).json({ success: false, message: 'A valid room access token is required' });
   }
+  let effectiveAccess = access;
   try {
     let room;
     let scheduled;
     if (isDbConnected()) {
       room = await Room.findOne({ roomId })
-        .select('isActive isLocked admittedParticipantIds participants.userId')
+        .select('isActive isLocked hostId admittedParticipantIds participants.userId')
         .lean();
       if (!room || !room.isLocked) {
         scheduled = await ScheduledMeeting.findOne({ roomId }).select('status invitees').lean();
@@ -71,6 +96,13 @@ export async function requireRoomAccess(req, res, next, { allowEnded = false } =
       room = inMemoryRooms.get(roomId);
       if (!room || !room.isLocked) scheduled = scheduledMeetings.get(roomId);
     }
+
+    const isCurrentHost = room?.hostId
+      && (String(room.hostId) === access.participantId
+        || String(room.hostId) === String(access.accountId || ''));
+    effectiveAccess = room?.hostId
+      ? { ...access, role: isCurrentHost ? 'host' : 'participant' }
+      : access;
 
     if (
       (room?.isActive === false && !allowEnded)
@@ -88,7 +120,7 @@ export async function requireRoomAccess(req, res, next, { allowEnded = false } =
     const scheduledMeetingIsPrivate = Boolean(scheduled?.invitees?.length);
     if (
       (room?.isLocked || scheduledMeetingIsPrivate)
-      && access.role !== 'host'
+      && effectiveAccess.role !== 'host'
       && !admitted
       && !previouslyJoined
     ) {
@@ -98,7 +130,7 @@ export async function requireRoomAccess(req, res, next, { allowEnded = false } =
     console.error('Verify room admission error:', error);
     return res.status(503).json({ success: false, message: 'Could not verify meeting room access' });
   }
-  req.roomAccess = access;
+  req.roomAccess = effectiveAccess;
   return next();
 }
 
