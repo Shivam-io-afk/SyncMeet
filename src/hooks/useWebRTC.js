@@ -330,20 +330,19 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
     // 5. Received ICE Candidate
     const handleIceCandidate = async ({ senderSocketId, candidate }) => {
       const pc = peerConnections.current.get(senderSocketId);
-      if (pc && candidate) {
-        try {
-          const iceCandidate = new RTCIceCandidate(candidate);
-          if (pc.remoteDescription) {
-            await pc.addIceCandidate(iceCandidate);
-          } else {
-            const queued = pendingIceCandidates.current.get(senderSocketId) || [];
-            if (queued.length >= MAX_PENDING_ICE_CANDIDATES) queued.shift();
-            queued.push(iceCandidate);
-            pendingIceCandidates.current.set(senderSocketId, queued);
-          }
-        } catch (err) {
-          console.warn('Add ICE candidate error:', err);
+      if (!candidate) return;
+      try {
+        const iceCandidate = new RTCIceCandidate(candidate);
+        if (pc?.remoteDescription) {
+          await pc.addIceCandidate(iceCandidate);
+        } else {
+          const queued = pendingIceCandidates.current.get(senderSocketId) || [];
+          if (queued.length >= MAX_PENDING_ICE_CANDIDATES) queued.shift();
+          queued.push(iceCandidate);
+          pendingIceCandidates.current.set(senderSocketId, queued);
         }
+      } catch (err) {
+        console.warn('Add ICE candidate error:', err);
       }
     };
 
@@ -410,9 +409,7 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
       if (restartState?.retryTimer) clearTimeout(restartState.retryTimer);
       iceRestartStates.current.delete(oldSocketId);
       pendingIceCandidates.current.delete(oldSocketId);
-      const oldStream = remoteStreams.current.get(oldSocketId);
       remoteStreams.current.delete(oldSocketId);
-      if (oldStream) remoteStreams.current.set(newSocketId, oldStream);
 
       setRemotePeers((prev) => {
         const existing = prev.find((p) => p.socketId === oldSocketId || (user?.id && p.user?.id === user.id));
@@ -422,7 +419,7 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
           {
             socketId: newSocketId,
             user: user || existing?.user || { name: 'Participant' },
-            stream: existing?.stream || oldStream || null,
+            stream: null,
             isMuted: existing ? existing.isMuted : Boolean(user?.isMuted),
             isVideoOff: existing ? existing.isVideoOff : Boolean(user?.isVideoOff),
             isHandRaised: existing ? existing.isHandRaised : false,

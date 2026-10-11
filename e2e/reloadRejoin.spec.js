@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Meeting Participant Reload and Rejoin Lifecycle', () => {
-  test('Host sees exactly one participant tile before and after participant reloads page', async ({ browser }) => {
+  test('both peers restore live video after either participant reloads', async ({ browser }) => {
     // 1. Create two isolated browser contexts with fake media permissions
     const hostContext = await browser.newContext({
       permissions: ['camera', 'microphone'],
@@ -72,10 +72,19 @@ test.describe('Meeting Participant Reload and Rejoin Lifecycle', () => {
       // 4. Verify Host sees the participant tile
       const participantNameOnHost = hostPage.locator('main').getByText('Attendee Reload Tester', { exact: true });
       await expect(participantNameOnHost).toBeVisible({ timeout: 15000 });
+      const hostNameOnParticipant = participantPage.locator('main').getByText('Host Reload Tester', { exact: true });
+      await expect(hostNameOnParticipant).toBeVisible({ timeout: 15000 });
 
-      // Count remote participant tiles on Host screen (must be exactly 1)
-      const participantTilesBefore = await participantNameOnHost.count();
-      expect(participantTilesBefore).toBe(1);
+      const expectLiveRemoteVideo = async (page) => {
+        const video = page.getByTestId('remote-video').first();
+        await expect(video).toBeVisible({ timeout: 15000 });
+        await expect.poll(
+          () => video.evaluate((element) => element.videoWidth > 0 && element.videoHeight > 0),
+          { timeout: 15000 }
+        ).toBe(true);
+      };
+      await expectLiveRemoteVideo(hostPage);
+      await expectLiveRemoteVideo(participantPage);
 
       // Hand raises and emoji reactions must be visible to the other participant.
       await participantPage.getByRole('button', { name: 'Raise Hand' }).click();
@@ -93,13 +102,14 @@ test.describe('Meeting Participant Reload and Rejoin Lifecycle', () => {
 
       // Participant should restore meeting session and reconnect
       await expect(participantPage.locator('button[title="Leave Meeting"]')).toBeVisible({ timeout: 15000 });
+      await expectLiveRemoteVideo(participantPage);
+      await expectLiveRemoteVideo(hostPage);
 
-      // Wait a moment for reconnection signaling to settle
-      await hostPage.waitForTimeout(2000);
-
-      // 6. Assert Host STILL sees exactly ONE participant tile (no ghost tile, no disappearance)
-      const participantTilesAfter = await participantNameOnHost.count();
-      expect(participantTilesAfter).toBe(1);
+      // 6. Refresh the host too and verify both directions recover again.
+      await hostPage.reload();
+      await expect(hostPage.locator('button[title="Leave Meeting"]')).toBeVisible({ timeout: 15000 });
+      await expectLiveRemoteVideo(hostPage);
+      await expectLiveRemoteVideo(participantPage);
     } finally {
       await hostContext.close();
       await participantContext.close();

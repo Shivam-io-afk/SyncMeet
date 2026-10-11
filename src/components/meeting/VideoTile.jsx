@@ -120,6 +120,7 @@ export function VideoTile({
         <div className="w-full h-full relative">
           <video
             ref={videoRef}
+            data-testid={isLocal ? 'local-video' : 'remote-video'}
             autoPlay
             playsInline
             muted
