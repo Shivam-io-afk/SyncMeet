@@ -281,14 +281,18 @@ test('Socket disconnect grace period emits user-left after expiry if user does n
   const socketUrl = `http://127.0.0.1:${server.address().port}`;
 
   const roomId = `expiry-room-${Date.now()}`;
-  inMemoryRooms.set(roomId, {
+  const accountId = `expiry-account-${roomId}`;
+  const attendanceKey = `${roomId}:${accountId}`;
+  const room = {
     roomId,
     title: 'Expiry Room',
     hostId: 'host-user',
     hostName: 'Host User',
     isLocked: false,
     isActive: true,
-  });
+    participants: [],
+  };
+  inMemoryRooms.set(roomId, room);
 
   const hostToken = issueRoomAccessToken({
     roomId,
@@ -301,6 +305,7 @@ test('Socket disconnect grace period emits user-left after expiry if user does n
     participantId: 'expiring-user',
     role: 'participant',
     displayName: 'Expiring User',
+    accountId,
   });
 
   const hostClient = createClient(socketUrl, { transports: ['websocket'], reconnection: false });
@@ -330,8 +335,16 @@ test('Socket disconnect grace period emits user-left after expiry if user does n
 
     const leftEvent = await userLeftPromise;
     assert.equal(leftEvent.user.id, 'expiring-user', 'user-left must be emitted after grace period expires');
+    assert.equal(
+      room.participants.some((participant) => participant.userId === 'expiring-user'),
+      false,
+      'expired participants must be removed from persisted room state'
+    );
+    assert.ok(inMemoryMeetingAttendance.get(attendanceKey)?.leftAt instanceof Date);
   } finally {
     hostClient.disconnect();
+    inMemoryMeetingAttendance.delete(attendanceKey);
+    inMemoryRooms.delete(roomId);
     io.close();
     await new Promise((resolve) => server.close(resolve));
   }
@@ -398,4 +411,3 @@ test('Rejoining attendance deduplication updates existing record instead of crea
     await new Promise((resolve) => server.close(resolve));
   }
 });
-

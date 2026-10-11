@@ -10,6 +10,8 @@ const ICE_SERVERS = {
 };
 
 const MAX_ICE_RESTART_ATTEMPTS = 2;
+const MAX_PENDING_ICE_CANDIDATES = 100;
+const isSocketIdBefore = (left, right) => left.localeCompare(right) < 0;
 
 export function useWebRTC(localStream, session, isScreenSharing = false) {
   const [remotePeers, setRemotePeers] = useState([]);
@@ -115,7 +117,7 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
       } else if (pc.connectionState === 'failed') {
         console.warn(`WebRTC connection to participant ${targetSocketId} failed. Attempting ICE recovery; a TURN relay may still be required.`);
         const localSocketId = socketService.getSocketId();
-        if (!localSocketId || localSocketId > targetSocketId) {
+        if (!localSocketId || !isSocketIdBefore(localSocketId, targetSocketId)) {
           socketService.requestIceRestart(targetSocketId);
         } else {
           restartPeerRef.current?.(targetSocketId);
@@ -175,7 +177,7 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
 
   const shouldInitiateOffer = useCallback((remoteSocketId) => {
     const localSocketId = socketService.getSocketId();
-    return Boolean(localSocketId && localSocketId.localeCompare(remoteSocketId) < 0);
+    return Boolean(localSocketId && isSocketIdBefore(localSocketId, remoteSocketId));
   }, []);
 
   const startPeerOffer = useCallback(async (targetSocketId, remoteUser) => {
@@ -214,8 +216,10 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
             isVideoOff: peer.isVideoOff,
             isHandRaised: peer.isHandRaised,
             isScreenSharing: Boolean(peer.isScreenSharing || peer.user?.isScreenSharing),
+            isDisconnected: Boolean(peer.isDisconnected),
           }];
         });
+        if (peer.isDisconnected) continue;
         createPeerConnection(peer.socketId, peer.user);
         if (shouldInitiateOffer(peer.socketId)) {
           await startPeerOffer(peer.socketId, peer.user);
@@ -292,6 +296,7 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
             await pc.addIceCandidate(iceCandidate);
           } else {
             const queued = pendingIceCandidates.current.get(senderSocketId) || [];
+            if (queued.length >= MAX_PENDING_ICE_CANDIDATES) queued.shift();
             queued.push(iceCandidate);
             pendingIceCandidates.current.set(senderSocketId, queued);
           }
@@ -303,7 +308,7 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
 
     const handleIceRestartRequest = ({ senderSocketId }) => {
       const localSocketId = socketService.getSocketId();
-      if (localSocketId && localSocketId < senderSocketId) {
+      if (localSocketId && isSocketIdBefore(localSocketId, senderSocketId)) {
         restartPeer(senderSocketId);
       }
     };
@@ -337,6 +342,20 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
         : peer));
     };
 
+    const handleParticipantHandRaise = ({ socketId, isHandRaised }) => {
+      if (typeof isHandRaised !== 'boolean') return;
+      setRemotePeers((prev) => prev.map((peer) => peer.socketId === socketId
+        ? { ...peer, isHandRaised }
+        : peer));
+    };
+
+    const handleUserDisconnected = ({ socketId }) => {
+      if (!socketId) return;
+      setRemotePeers((prev) => prev.map((peer) => peer.socketId === socketId
+        ? { ...peer, isDisconnected: true }
+        : peer));
+    };
+
     // User Reconnected (rejoin after reload or network blip)
     const handleUserReconnected = ({ oldSocketId, newSocketId, user }) => {
       console.log('🔄 [WebRTC] User reconnected:', user?.name || newSocketId);
@@ -367,6 +386,7 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
             isVideoOff: existing ? existing.isVideoOff : Boolean(user?.isVideoOff),
             isHandRaised: existing ? existing.isHandRaised : false,
             isScreenSharing: Boolean(user?.isScreenSharing),
+            isDisconnected: false,
           },
         ];
       });
@@ -385,8 +405,10 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
     socketService.on('webrtc-ice-candidate', handleIceCandidate);
     socketService.on('ice-restart-request', handleIceRestartRequest);
     socketService.on('user-left', handleUserLeft);
+    socketService.on('user-disconnected', handleUserDisconnected);
     socketService.on('participant-media-state', handleParticipantMediaState);
     socketService.on('participant-screen-share', handleParticipantScreenShare);
+    socketService.on('user-hand-updated', handleParticipantHandRaise);
 
     return () => {
       socketService.off('room-peers', handleRoomPeers);
@@ -397,8 +419,10 @@ export function useWebRTC(localStream, session, isScreenSharing = false) {
       socketService.off('webrtc-ice-candidate', handleIceCandidate);
       socketService.off('ice-restart-request', handleIceRestartRequest);
       socketService.off('user-left', handleUserLeft);
+      socketService.off('user-disconnected', handleUserDisconnected);
       socketService.off('participant-media-state', handleParticipantMediaState);
       socketService.off('participant-screen-share', handleParticipantScreenShare);
+      socketService.off('user-hand-updated', handleParticipantHandRaise);
 
       // Close all peer connections
       peerConnections.current.forEach((pc, socketId) => {

@@ -77,6 +77,17 @@ test.describe('Meeting Participant Reload and Rejoin Lifecycle', () => {
       const participantTilesBefore = await participantNameOnHost.count();
       expect(participantTilesBefore).toBe(1);
 
+      // Hand raises and emoji reactions must be visible to the other participant.
+      await participantPage.getByRole('button', { name: 'Raise Hand' }).click();
+      await expect(hostPage.locator('main').getByText('Hand Raised', { exact: true })).toBeVisible();
+
+      await participantPage.getByRole('button', { name: 'Lower Hand' }).click();
+      await expect(hostPage.locator('main').getByText('Hand Raised', { exact: true })).not.toBeVisible();
+
+      await participantPage.getByRole('button', { name: 'Send emoji reaction' }).click();
+      await participantPage.getByRole('menuitem', { name: 'Send 👏 reaction' }).click();
+      await expect(hostPage.locator('.fixed.inset-0.pointer-events-none').getByText('👏', { exact: true })).toBeVisible();
+
       // 5. Participant reloads the page
       await participantPage.reload();
 

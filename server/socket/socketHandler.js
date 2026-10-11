@@ -53,7 +53,11 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
       target.emit(event, payload);
     }
   };
-  const persistParticipantState = async (roomId, participant, { allowMissing = false } = {}) => {
+  const persistParticipantState = async (
+    roomId,
+    participant,
+    { allowMissing = false, onlyIfSocketId } = {}
+  ) => {
     const storedParticipant = {
       userId: String(participant.userId),
       name: participant.name,
@@ -66,8 +70,14 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
 
     if (isDbConnected()) {
       const participantId = storedParticipant.userId;
+      const roomFilter = { roomId, isActive: true };
+      if (onlyIfSocketId) {
+        roomFilter.participants = {
+          $elemMatch: { userId: participantId, socketId: onlyIfSocketId },
+        };
+      }
       const result = await Room.updateOne(
-        { roomId, isActive: true },
+        roomFilter,
         [{
           $set: {
             participants: {
@@ -99,24 +109,35 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
       throw new Error('Active room was not found while saving participant state');
     }
     const participants = Array.isArray(room.participants) ? room.participants : [];
+    if (onlyIfSocketId && !participants.some(
+      (item) => String(item.userId) === String(participant.userId) && item.socketId === onlyIfSocketId
+    )) return false;
     room.participants = [
       ...participants.filter((item) => String(item.userId) !== storedParticipant.userId),
       storedParticipant,
     ];
     return true;
   };
-  const removeParticipantState = async (roomId, participantId, socketId) => {
+  const removeParticipantState = async (
+    roomId,
+    participantId,
+    socketId,
+    { disconnectedOnly = false } = {}
+  ) => {
     const userId = String(participantId);
+    const participantFilter = disconnectedOnly
+      ? { userId, socketId: null, isDisconnected: true }
+      : { userId, socketId };
     if (isDbConnected()) {
       const result = await Room.updateOne(
         {
           roomId,
           isActive: true,
-          participants: { $elemMatch: { userId, socketId } },
+          participants: { $elemMatch: participantFilter },
         },
         {
           $pull: {
-            participants: { userId, socketId },
+            participants: participantFilter,
             admittedParticipantIds: userId,
           },
         }
@@ -128,11 +149,17 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
     if (!room || room.isActive === false) return false;
     const participants = Array.isArray(room.participants) ? room.participants : [];
     const hasCurrentParticipant = participants.some(
-      (participant) => String(participant.userId) === userId && participant.socketId === socketId
+      (participant) => String(participant.userId) === userId
+        && (disconnectedOnly
+          ? participant.socketId === null && participant.isDisconnected === true
+          : participant.socketId === socketId)
     );
     if (!hasCurrentParticipant) return false;
     room.participants = participants.filter(
-      (participant) => String(participant.userId) !== userId || participant.socketId !== socketId
+      (participant) => String(participant.userId) !== userId
+        || (disconnectedOnly
+          ? participant.socketId !== null || participant.isDisconnected !== true
+          : participant.socketId !== socketId)
     );
     room.admittedParticipantIds = (room.admittedParticipantIds || []).filter(
       (id) => String(id) !== userId
@@ -474,6 +501,7 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
         previousParticipants?.delete(socket.id);
         if (previousParticipants?.size === 0) rooms.delete(socket.roomId);
       }
+      socket.isIntentionalLeave = false;
       socket.join(roomId);
       socket.roomId = roomId;
       socket.user = {
@@ -490,6 +518,27 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
         rooms.set(roomId, new Map());
       }
       const roomParticipants = rooms.get(roomId);
+      const duplicateParticipants = Array.from(roomParticipants.entries())
+        .filter(([participantSocketId, data]) => (
+          participantSocketId !== socket.id
+          && String(data.user?.id || '') === String(access.participantId)
+        ));
+      for (const [participantSocketId] of duplicateParticipants) {
+        roomParticipants.delete(participantSocketId);
+        const previousSocket = io.sockets.sockets.get(participantSocketId);
+        if (previousSocket) {
+          previousSocket.isIntentionalLeave = true;
+          previousSocket.leave(roomId);
+          previousSocket.roomId = null;
+          previousSocket.parentRoomId = null;
+          previousSocket.user = null;
+          previousSocket.disconnect(true);
+        }
+      }
+      if (!oldSocketId && duplicateParticipants.length > 0) {
+        oldSocketId = duplicateParticipants[duplicateParticipants.length - 1][0];
+        isReconnecting = true;
+      }
       roomParticipants.set(socket.id, {
         socketId: socket.id,
         user: socket.user,
@@ -541,6 +590,7 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
           isVideoOff: data.isVideoOff,
           isHandRaised: data.isHandRaised,
           isScreenSharing: Boolean(data.isScreenSharing),
+          isDisconnected: Boolean(data.isDisconnected),
         }));
 
       socket.emit('room-peers', { peers: existingPeers });
@@ -749,18 +799,36 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
       }
     });
 
-    socket.on('meeting-question-deleted', (payload) => {
+    socket.on('meeting-question-deleted', async (payload) => {
       const parentRoomId = socket.parentRoomId;
-      if (!parentRoomId || !rooms.get(socket.roomId)?.has(socket.id)) return;
       const { questionId } = readSocketPayload(payload);
-      if (typeof questionId === 'string' && questionId.trim()) {
-        emitToMeeting(parentRoomId, 'meeting-question-deleted', { questionId: questionId.trim() });
+      if (!parentRoomId || !rooms.get(socket.roomId)?.has(socket.id)
+        || typeof questionId !== 'string' || !questionId.trim() || questionId.length > 120) return;
+
+      if (socket.user?.role !== 'host') {
+        let canonical;
+        try {
+          canonical = isDbConnected()
+            ? await MeetingQuestion.findOne({
+              id: questionId.trim(),
+              roomId: parentRoomId,
+            }).select('authorId').lean()
+            : (roomQuestions.get(parentRoomId) || []).find((item) => item.id === questionId.trim());
+        } catch (error) {
+          console.error('Verify question deletion broadcast permission error:', error);
+          return;
+        }
+        if (String(canonical?.authorId || '') !== String(socket.user?.id || '')
+          || socket.parentRoomId !== parentRoomId
+          || !rooms.get(socket.roomId)?.has(socket.id)) return;
       }
+      emitToMeeting(parentRoomId, 'meeting-question-deleted', { questionId: questionId.trim() });
     });
 
     socket.on('meeting-poll-deleted', (payload) => {
       const parentRoomId = socket.parentRoomId;
-      if (!parentRoomId || !rooms.get(socket.roomId)?.has(socket.id)) return;
+      if (!parentRoomId || socket.user?.role !== 'host'
+        || !rooms.get(socket.roomId)?.has(socket.id)) return;
       const { pollId } = readSocketPayload(payload);
       if (typeof pollId === 'string' && pollId.trim()) {
         emitToMeeting(parentRoomId, 'meeting-poll-deleted', { pollId: pollId.trim() });
@@ -1017,35 +1085,40 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
     // Intentional leave handling
     socket.on('leave-room', async () => {
       socket.isIntentionalLeave = true;
-      const accountId = socket.user?.accountId;
+      const leavingRoomId = socket.roomId;
+      const leavingUser = socket.user;
+      const accountId = leavingUser?.accountId;
       const parentRoomId = socket.parentRoomId || socket.roomId;
-      const participant = socket.roomId ? rooms.get(socket.roomId)?.get(socket.id) : null;
+      const participant = leavingRoomId ? rooms.get(leavingRoomId)?.get(socket.id) : null;
       if (participant?.isScreenSharing) {
         participant.isScreenSharing = false;
         participant.user = { ...participant.user, isScreenSharing: false };
-        socket.user = { ...socket.user, isScreenSharing: false };
-        socket.to(socket.roomId).emit('participant-screen-share', {
+        socket.to(leavingRoomId).emit('participant-screen-share', {
           socketId: socket.id,
           isScreenSharing: false,
         });
       }
-      const graceKey = `${parentRoomId}:${socket.user?.id || socket.id}`;
+      const graceKey = `${parentRoomId}:${leavingUser?.id || socket.id}`;
       const existingGrace = pendingDisconnects.get(graceKey);
       if (existingGrace?.timer) clearTimeout(existingGrace.timer);
       pendingDisconnects.delete(graceKey);
 
-      if (socket.roomId && rooms.has(socket.roomId)) {
-        const roomMap = rooms.get(socket.roomId);
+      if (leavingRoomId && rooms.has(leavingRoomId)) {
+        const roomMap = rooms.get(leavingRoomId);
         roomMap.delete(socket.id);
         if (roomMap.size === 0) {
-          rooms.delete(socket.roomId);
+          rooms.delete(leavingRoomId);
         } else {
-          socket.to(socket.roomId).emit('user-left', {
+          socket.to(leavingRoomId).emit('user-left', {
             socketId: socket.id,
-            user: socket.user,
+            user: leavingUser,
           });
         }
       }
+      if (leavingRoomId) socket.leave(leavingRoomId);
+      socket.roomId = null;
+      socket.parentRoomId = null;
+      socket.user = null;
       if (accountId && parentRoomId) {
         const leftAt = new Date();
         try {
@@ -1062,9 +1135,9 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
           console.error('Persist meeting attendance leave error:', error);
         }
       }
-      if (parentRoomId && socket.user?.id) {
+      if (parentRoomId && leavingUser?.id) {
         try {
-          await removeParticipantState(parentRoomId, socket.user.id, socket.id);
+          await removeParticipantState(parentRoomId, leavingUser.id, socket.id);
         } catch (error) {
           console.error('Remove intentionally left room participant state error:', error);
           socket.emit('media-state-persistence-error', {
@@ -1122,7 +1195,7 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
             isMuted: activeParticipant.isMuted,
             isVideoOff: activeParticipant.isVideoOff,
             isDisconnected: true,
-          }, { allowMissing: true });
+          }, { allowMissing: true, onlyIfSocketId: socket.id });
         } catch (error) {
           console.error('Persist disconnected participant state error:', error);
         }
@@ -1136,11 +1209,19 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
             roomMap.delete(socket.id);
             if (roomMap.size === 0) {
               rooms.delete(socket.roomId);
-            } else {
-              socket.to(socket.roomId).emit('user-left', {
-                socketId: socket.id,
-                user: socket.user,
-              });
+            }
+            socket.to(socket.roomId).emit('user-left', {
+              socketId: socket.id,
+              user: socket.user,
+            });
+            if (isRoomActive && socket.user?.id && parentRoomId) {
+              try {
+                await removeParticipantState(parentRoomId, socket.user.id, null, {
+                  disconnectedOnly: true,
+                });
+              } catch (error) {
+                console.error('Remove disconnected room participant state error:', error);
+              }
             }
             if (accountId && parentRoomId) {
               const leftAt = new Date();
@@ -1179,32 +1260,48 @@ export function setupSocketHandlers(io, { disconnectGracePeriodMs = 20000 } = {}
           const capturedUser = socket.user;
 
           const timer = setTimeout(async () => {
+            const pendingDisconnect = pendingDisconnects.get(graceKey);
+            if (pendingDisconnect?.socketId !== capturedSocketId) return;
             pendingDisconnects.delete(graceKey);
+            let removedParticipant = false;
             if (rooms.has(capturedRoomId)) {
               const currentRoomMap = rooms.get(capturedRoomId);
               if (currentRoomMap.has(capturedSocketId)) {
                 currentRoomMap.delete(capturedSocketId);
                 if (currentRoomMap.size === 0) {
                   rooms.delete(capturedRoomId);
-                } else {
-                  io.to(capturedRoomId).emit('user-left', {
-                    socketId: capturedSocketId,
-                    user: capturedUser,
-                  });
                 }
+                removedParticipant = true;
               }
             }
-            if (accountId && parentRoomId) {
+            if (removedParticipant) {
+              io.to(capturedRoomId).emit('user-left', {
+                socketId: capturedSocketId,
+                user: capturedUser,
+              });
+            }
+            if (capturedUser?.id && parentRoomId && isRoomActive) {
+              try {
+                await removeParticipantState(parentRoomId, capturedUser.id, null, {
+                  disconnectedOnly: true,
+                });
+              } catch (error) {
+                console.error('Remove expired disconnected participant state error:', error);
+              }
+            }
+            if (accountId && parentRoomId && removedParticipant) {
               const leftAt = new Date();
               try {
                 if (isDbConnected()) {
                   await MeetingAttendance.updateOne(
-                    { roomId: parentRoomId, userId: accountId },
+                    { roomId: parentRoomId, userId: accountId, socketId: capturedSocketId, leftAt: null },
                     { $set: { leftAt } }
                   );
                 } else {
                   const attendance = inMemoryMeetingAttendance.get(`${parentRoomId}:${accountId}`);
-                  if (attendance) attendance.leftAt = leftAt;
+                  if (attendance?.socketId === capturedSocketId && !attendance.leftAt) {
+                    attendance.leftAt = leftAt;
+                  }
                 }
               } catch (error) {
                 console.error('Persist meeting attendance end error:', error);

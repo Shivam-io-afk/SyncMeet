@@ -1059,9 +1059,7 @@ test('previous room participants can rejoin after locking, while intentional lea
     });
     assert.equal(stateAfterLeave.status, 403);
   } finally {
-    const ended = reconnectedGuest ? waitForEvent(reconnectedGuest, 'meeting-ended-by-host') : null;
     host.emit('host-end-meeting');
-    if (ended) await ended;
     guest?.disconnect();
     reconnectedGuest?.disconnect();
     host.disconnect();

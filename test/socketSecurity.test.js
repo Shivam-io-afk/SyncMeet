@@ -3,7 +3,11 @@ import http from 'node:http';
 import { test } from 'node:test';
 import { Server } from 'socket.io';
 import { io as createClient } from 'socket.io-client';
-import { inMemoryMeetingAttendance, inMemoryRooms } from '../server/store/memoryMeetingStore.js';
+import {
+  inMemoryMeetingAttendance,
+  inMemoryRooms,
+  roomQuestions,
+} from '../server/store/memoryMeetingStore.js';
 import { issueRoomAccessToken } from '../server/middleware/roomAccessMiddleware.js';
 import { setupSocketHandlers } from '../server/socket/socketHandler.js';
 
@@ -188,6 +192,207 @@ test('temporary disconnect preserves room membership while intentional leave cle
   } finally {
     for (const client of clients) client.disconnect();
     inMemoryMeetingAttendance.delete(attendanceKey);
+    inMemoryRooms.delete(roomId);
+    await new Promise((resolve) => io.close(resolve));
+  }
+});
+
+test('intentional leave unsubscribes the socket from later room broadcasts', async () => {
+  const roomId = `socket-leave-broadcast-${Date.now()}`;
+  inMemoryRooms.set(roomId, {
+    roomId,
+    hostId: 'leave-broadcast-host',
+    hostName: 'Host',
+    isLocked: false,
+    admittedParticipantIds: [],
+    participants: [],
+    isActive: true,
+  });
+
+  const server = http.createServer();
+  const io = new Server(server);
+  setupSocketHandlers(io);
+  await listen(server);
+  const url = `http://127.0.0.1:${server.address().port}`;
+  const clients = [];
+
+  try {
+    const host = await connectParticipant(url, roomId, 'leave-broadcast-host', 'host');
+    clients.push(host);
+    const attendee = await connectParticipant(url, roomId, 'leave-broadcast-attendee', 'participant');
+    clients.push(attendee);
+
+    const attendeeLeft = waitForEvent(host, 'user-left');
+    attendee.emit('leave-room');
+    await attendeeLeft;
+    await waitForCondition(
+      () => inMemoryRooms.get(roomId)?.participants.length === 1,
+      'intentional leave should remove the attendee before subsequent room broadcasts'
+    );
+
+    assert.equal(await expectNoEvent(attendee, 'room-lock-status', () => {
+      host.emit('host-lock-room', { isLocked: true });
+    }), false, 'a departed participant must not receive room broadcasts');
+  } finally {
+    for (const client of clients) client.disconnect();
+    inMemoryRooms.delete(roomId);
+    await new Promise((resolve) => io.close(resolve));
+  }
+});
+
+test('participants cannot forge meeting poll or question deletion broadcasts', async () => {
+  const roomId = `socket-delete-broadcast-auth-${Date.now()}`;
+  inMemoryRooms.set(roomId, {
+    roomId,
+    hostId: 'delete-broadcast-host',
+    hostName: 'Host',
+    isLocked: false,
+    admittedParticipantIds: [],
+    participants: [],
+    isActive: true,
+  });
+  roomQuestions.set(roomId, [{
+    id: 'attendee-owned-question',
+    roomId,
+    authorId: 'delete-broadcast-attendee',
+  }]);
+
+  const server = http.createServer();
+  const io = new Server(server);
+  setupSocketHandlers(io);
+  await listen(server);
+  const url = `http://127.0.0.1:${server.address().port}`;
+  const clients = [];
+
+  try {
+    const host = await connectParticipant(url, roomId, 'delete-broadcast-host', 'host');
+    clients.push(host);
+    const attendee = await connectParticipant(url, roomId, 'delete-broadcast-attendee', 'participant');
+    clients.push(attendee);
+
+    assert.equal(await expectNoEvent(host, 'meeting-poll-deleted', () => {
+      attendee.emit('meeting-poll-deleted', { pollId: 'forged-poll' });
+    }), false, 'participants cannot broadcast forged poll deletions');
+    assert.equal(await expectNoEvent(host, 'meeting-question-deleted', () => {
+      attendee.emit('meeting-question-deleted', { questionId: 'forged-question' });
+    }), false, 'participants cannot broadcast forged question deletions');
+
+    const ownedQuestionDeletion = waitForEvent(host, 'meeting-question-deleted');
+    attendee.emit('meeting-question-deleted', { questionId: 'attendee-owned-question' });
+    assert.equal((await ownedQuestionDeletion).questionId, 'attendee-owned-question');
+  } finally {
+    for (const client of clients) client.disconnect();
+    inMemoryRooms.delete(roomId);
+    roomQuestions.delete(roomId);
+    await new Promise((resolve) => io.close(resolve));
+  }
+});
+
+test('disconnect and reconnect state is broadcast and included in the peer snapshot', async () => {
+  const roomId = `socket-reconnect-broadcast-${Date.now()}`;
+  inMemoryRooms.set(roomId, {
+    roomId,
+    hostId: 'reconnect-host',
+    hostName: 'Host',
+    isLocked: false,
+    admittedParticipantIds: [],
+    participants: [],
+    isActive: true,
+  });
+
+  const server = http.createServer();
+  const io = new Server(server);
+  setupSocketHandlers(io, { disconnectGracePeriodMs: 5_000 });
+  await listen(server);
+  const url = `http://127.0.0.1:${server.address().port}`;
+  const clients = [];
+
+  try {
+    const host = await connectParticipant(url, roomId, 'reconnect-host', 'host');
+    clients.push(host);
+    const attendee = await connectParticipant(url, roomId, 'reconnect-attendee', 'participant');
+    clients.push(attendee);
+    const oldSocketId = attendee.id;
+
+    const disconnected = waitForEvent(host, 'user-disconnected');
+    attendee.disconnect();
+    assert.equal((await disconnected).socketId, oldSocketId);
+
+    let snapshot;
+    const lateJoiner = await connectParticipant(url, roomId, 'reconnect-late-joiner', 'participant', {
+      onPeers: (peerList) => { snapshot = peerList; },
+    });
+    clients.push(lateJoiner);
+    const disconnectedPeer = snapshot.peers.find((peer) => peer.socketId === oldSocketId);
+    assert.equal(disconnectedPeer?.isDisconnected, true);
+
+    const reconnected = waitForEvent(host, 'user-reconnected');
+    const replacement = await connectParticipant(url, roomId, 'reconnect-attendee', 'participant');
+    clients.push(replacement);
+    const event = await reconnected;
+    assert.equal(event.oldSocketId, oldSocketId);
+    assert.equal(event.newSocketId, replacement.id);
+  } finally {
+    for (const client of clients) client.disconnect();
+    inMemoryRooms.delete(roomId);
+    await new Promise((resolve) => io.close(resolve));
+  }
+});
+
+test('a participant rejoining before disconnect cleanup replaces the previous socket', async () => {
+  const roomId = `socket-duplicate-identity-${Date.now()}`;
+  inMemoryRooms.set(roomId, {
+    roomId,
+    hostId: 'duplicate-host',
+    hostName: 'Host',
+    isLocked: false,
+    admittedParticipantIds: [],
+    participants: [],
+    isActive: true,
+  });
+
+  const server = http.createServer();
+  const io = new Server(server);
+  setupSocketHandlers(io, { disconnectGracePeriodMs: 5_000 });
+  await listen(server);
+  const url = `http://127.0.0.1:${server.address().port}`;
+  const clients = [];
+
+  try {
+    const host = await connectParticipant(url, roomId, 'duplicate-host', 'host');
+    clients.push(host);
+    const first = await connectParticipant(url, roomId, 'duplicate-attendee', 'participant');
+    clients.push(first);
+    const oldSocketId = first.id;
+
+    const replacementEvent = waitForEvent(host, 'user-reconnected');
+    const replacement = await connectParticipant(url, roomId, 'duplicate-attendee', 'participant');
+    clients.push(replacement);
+
+    const event = await replacementEvent;
+    assert.equal(event.oldSocketId, oldSocketId);
+    assert.equal(event.newSocketId, replacement.id);
+    assert.equal(first.connected, false, 'the superseded socket should be disconnected');
+    assert.equal(
+      inMemoryRooms.get(roomId).participants.filter(
+        (participant) => participant.userId === 'duplicate-attendee'
+      ).length,
+      1,
+      'only the replacement socket should have persisted participant state'
+    );
+
+    let snapshot;
+    const lateJoiner = await connectParticipant(url, roomId, 'duplicate-late-joiner', 'participant', {
+      onPeers: (payload) => { snapshot = payload; },
+    });
+    clients.push(lateJoiner);
+    assert.equal(
+      snapshot.peers.filter((peer) => peer.user?.id === 'duplicate-attendee').length,
+      1,
+      'room membership must contain only one socket for a participant identity'
+    );
+  } finally {
+    for (const client of clients) client.disconnect();
     inMemoryRooms.delete(roomId);
     await new Promise((resolve) => io.close(resolve));
   }

@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Database, Clock, Sparkles, Trash2, X, Search, Check, Copy, HardDrive 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Database, Clock, Sparkles, Trash2, X, Search, Check, Copy, HardDrive, TriangleAlert,
 } from 'lucide-react';
 import { dbService } from '../../services/dbService';
 import { apiService } from '../../services/apiService';
 
-export function MeetingHistoryModal({ isOpen, onClose, onSelectMeeting, isAccount = false }) {
+export function MeetingHistoryModal({ isOpen, onClose, onSelectMeeting, onNotify, isAccount = false }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -13,6 +13,22 @@ export function MeetingHistoryModal({ isOpen, onClose, onSelectMeeting, isAccoun
   const [copiedId, setCopiedId] = useState(null);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [archiveError, setArchiveError] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
+  const [deletingRoomId, setDeletingRoomId] = useState(null);
+  const cancelDeleteRef = useRef(null);
+
+  useEffect(() => {
+    if (!deleteConfirmation) return undefined;
+
+    cancelDeleteRef.current?.focus();
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !deletingRoomId) {
+        setDeleteConfirmation(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [deleteConfirmation, deletingRoomId]);
 
   const loadHistory = async () => {
     setLoading(true);
@@ -111,26 +127,37 @@ export function MeetingHistoryModal({ isOpen, onClose, onSelectMeeting, isAccoun
     };
   }, [isAccount, selectedMeeting?.roomId]);
 
-  const handleDelete = async (roomId, e) => {
+  const handleDelete = (roomId, e) => {
     e.stopPropagation();
     const message = isAccount
       ? 'Remove this meeting from your archives? Other participants keep their copy.'
       : 'Delete this meeting archive and its AI notes permanently?';
-    if (window.confirm(message)) {
-      try {
-        if (isAccount) await apiService.removeRecentMeeting(roomId);
-        await dbService.deleteRoom(roomId);
-      } catch (err) {
-        console.error('Error deleting archive:', err);
-        window.alert('Could not delete this meeting. Please try again.');
-        return;
-      }
-      if (selectedMeeting?.roomId === roomId) {
-        setSelectedMeeting(null);
-      }
-      window.dispatchEvent(new Event('syncmeet:history-changed'));
-      await loadHistory();
+    setDeleteConfirmation({ roomId, message });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmation) return;
+
+    const { roomId } = deleteConfirmation;
+    setDeletingRoomId(roomId);
+    try {
+      if (isAccount) await apiService.removeRecentMeeting(roomId);
+      await dbService.deleteRoom(roomId);
+    } catch (err) {
+      console.error('Error deleting archive:', err);
+      setDeleteConfirmation(null);
+      onNotify?.('Could not delete this meeting. Please try again.');
+      setDeletingRoomId(null);
+      return;
     }
+
+    if (selectedMeeting?.roomId === roomId) {
+      setSelectedMeeting(null);
+    }
+    setDeleteConfirmation(null);
+    setDeletingRoomId(null);
+    window.dispatchEvent(new Event('syncmeet:history-changed'));
+    await loadHistory();
   };
 
   const copyNotes = (notes) => {
@@ -173,7 +200,8 @@ ${notes.openQuestions?.map((item) => `- ${item}`).join('\n') || '- None'}
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#20231d]/35 p-2 backdrop-blur-sm animate-in fade-in duration-150 sm:p-4 dark:bg-black/60">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#20231d]/35 p-2 backdrop-blur-sm animate-in fade-in duration-150 sm:p-4 dark:bg-black/60">
       <div
         role="dialog"
         aria-modal="true"
@@ -376,6 +404,68 @@ ${notes.openQuestions?.map((item) => `- ${item}`).join('\n') || '- None'}
           </section>
         </div>
       </div>
-    </div>
+      </div>
+      {deleteConfirmation && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#20231d]/45 p-4 backdrop-blur-sm dark:bg-black/70"
+          onClick={() => {
+            if (!deletingRoomId) setDeleteConfirmation(null);
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-archive-title"
+            aria-describedby="delete-archive-message"
+            className="w-full max-w-md rounded-[24px] border border-white/80 bg-[#f8f8f5] p-5 text-[#30322c] shadow-[0_24px_80px_rgba(37,43,34,0.28)] dark:border-[#222736] dark:bg-[#12151e] dark:text-[#f3f4f6]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#fff2ee] text-[#bd5b4f] dark:bg-[#341d1a] dark:text-[#f87171]">
+                <TriangleAlert className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 id="delete-archive-title" className="text-sm font-bold">
+                  {isAccount ? 'Remove meeting from archives?' : 'Delete meeting archive?'}
+                </h2>
+                <p id="delete-archive-message" className="mt-2 text-xs leading-relaxed text-[#777a72] dark:text-[#a0a6b5]">
+                  {deleteConfirmation.message}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Cancel archive deletion"
+                disabled={Boolean(deletingRoomId)}
+                onClick={() => setDeleteConfirmation(null)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#85877f] transition-colors hover:bg-[#eff0eb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50 disabled:opacity-50 dark:text-[#8d93a3] dark:hover:bg-[#1e2434]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                ref={cancelDeleteRef}
+                type="button"
+                disabled={Boolean(deletingRoomId)}
+                onClick={() => setDeleteConfirmation(null)}
+                className="rounded-xl border border-[#e1e3dc] bg-white px-4 py-2 text-xs font-semibold text-[#555850] transition-colors hover:bg-[#eff0eb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9bbc6d]/50 disabled:opacity-50 dark:border-[#242b3b] dark:bg-[#161a25] dark:text-[#d1d5db] dark:hover:bg-[#1e2434]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={Boolean(deletingRoomId)}
+                onClick={confirmDelete}
+                className="rounded-xl bg-[#b94f43] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#a94338] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97868]/50 disabled:cursor-wait disabled:opacity-60"
+              >
+                {deletingRoomId
+                  ? (isAccount ? 'Removing…' : 'Deleting…')
+                  : (isAccount ? 'Remove from archives' : 'Delete archive')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

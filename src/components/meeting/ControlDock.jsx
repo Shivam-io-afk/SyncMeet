@@ -84,7 +84,7 @@ export function ControlDock({
               mediaState.isAudioMuted
                 ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
                 : isSpeaking
-                ? 'bg-[#B8F58A] text-[#08090B] border border-[#B8F58A] shadow-[0_0_15px_rgba(184,245,138,0.35)]'
+                ? 'bg-[#b9d88d] text-[#262820] border border-[#cce1aa] ring-2 ring-[#b9d88d]/40'
                 : 'bg-white/[0.08] hover:bg-white/[0.15] text-white border border-white/[0.06]'
             }`}
             title={mediaState.isAudioMuted ? 'Unmute microphone (Ctrl+D)' : 'Mute microphone (Ctrl+D)'}
@@ -120,7 +120,7 @@ export function ControlDock({
             onClick={mediaState.toggleScreenShare}
             className={`w-11 h-11 md:w-12 md:h-12 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${
               mediaState.isScreenSharing
-                ? 'bg-[#B8F58A] text-[#08090B] shadow-[0_0_15px_rgba(184,245,138,0.3)]'
+                ? 'bg-[#b9d88d] text-[#262820] shadow-lg shadow-[#b9d88d]/20'
                 : 'bg-white/[0.08] hover:bg-white/[0.15] text-gray-300 border border-white/[0.06]'
             }`}
             title={mediaState.isScreenSharing ? 'Stop sharing screen' : 'Share your screen'}
@@ -148,6 +148,9 @@ export function ControlDock({
               type="button"
               ref={reactionButtonRef}
               onClick={() => setShowReactionsMenu((visible) => !visible)}
+              aria-label="Send emoji reaction"
+              aria-haspopup="menu"
+              aria-expanded={showReactionsMenu}
               className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-gray-300 border border-white/[0.06] transition-all active:scale-95 flex items-center justify-center"
               title="Send emoji reaction"
             >
@@ -183,7 +186,7 @@ export function ControlDock({
                 : transcriptionError
                   ? 'bg-red-500/20 text-red-300 border border-red-500/30'
                 : isTranscriptionEnabled
-                  ? 'bg-[#B8F58A] text-[#08090B] shadow-[0_0_15px_rgba(184,245,138,0.3)]'
+                  ? 'bg-[#b9d88d] text-[#262820] shadow-lg shadow-[#b9d88d]/20'
                   : 'bg-white/[0.08] hover:bg-white/[0.15] text-gray-300 border border-white/[0.06]'
             }`}
             title={transcriptionError || (!isSpeechSupported
@@ -201,7 +204,7 @@ export function ControlDock({
             onClick={() => onToggleSidebar('whiteboard')}
             className={`w-11 h-11 md:w-12 md:h-12 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${
               sidebarOpen && activeSidebarTab === 'whiteboard'
-                ? 'bg-[#B8F58A] text-[#08090B] shadow-[0_0_15px_rgba(184,245,138,0.3)]'
+                ? 'bg-[#b9d88d] text-[#262820] shadow-md'
                 : 'bg-white/[0.08] hover:bg-white/[0.15] text-gray-300 border border-white/[0.06]'
             }`}
             title="Collaborative Whiteboard Canvas"
@@ -215,13 +218,13 @@ export function ControlDock({
             onClick={() => onToggleSidebar('notes')}
             className={`h-11 md:h-12 px-4 md:px-5 rounded-full transition-all duration-150 active:scale-95 flex items-center gap-2 font-medium text-xs md:text-sm ${
               sidebarOpen && activeSidebarTab === 'notes'
-                ? 'bg-[#B8F58A] text-[#08090B] shadow-[0_0_20px_rgba(184,245,138,0.35)]'
+                ? 'bg-[#b9d88d] text-[#262820] shadow-lg shadow-[#b9d88d]/20'
                 : 'bg-white/[0.08] hover:bg-white/[0.15] text-gray-300 border border-white/[0.06]'
             }`}
             title="Toggle Gemini AI Meeting Notes & Action Items"
           >
-            <Sparkles className="w-4 h-4 text-[#08090B] dark:text-[#08090B]" />
-            <span className="hidden sm:inline-block font-semibold">AI Notes</span>
+            <Sparkles className="w-4 h-4 text-[#d7e9b7]" />
+            <span className="hidden sm:inline-block">AI Notes</span>
           </button>
 
           {/* 9. Room Chat Toggle */}
@@ -230,7 +233,7 @@ export function ControlDock({
             onClick={() => onToggleSidebar('chat')}
             className={`w-11 h-11 md:w-12 md:h-12 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${
               sidebarOpen && activeSidebarTab === 'chat'
-                ? 'bg-[#B8F58A] text-[#08090B] border border-[#B8F58A] shadow-[0_0_15px_rgba(184,245,138,0.3)]'
+                ? 'bg-[#b9d88d] text-[#262820] border border-[#cce1aa]'
                 : 'bg-white/[0.08] hover:bg-white/[0.15] text-gray-300 border border-white/[0.06]'
             }`}
             title="Room Chat"
@@ -256,6 +259,7 @@ export function ControlDock({
       {showReactionsMenu && reactionMenuPosition && createPortal(
         <div
           ref={reactionsMenuRef}
+          role="menu"
           className="liquid-glass fixed z-[100] flex -translate-x-1/2 items-center gap-1 rounded-2xl p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-100"
           style={{ left: reactionMenuPosition.left, bottom: reactionMenuPosition.bottom }}
         >
@@ -263,6 +267,7 @@ export function ControlDock({
             <button
               key={em}
               type="button"
+              role="menuitem"
               aria-label={`Send ${em} reaction`}
               onClick={() => {
                 onSendReaction(em);

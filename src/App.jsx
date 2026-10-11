@@ -16,6 +16,7 @@ import { MeetingHistoryModal } from './components/history/MeetingHistoryModal';
 import { HostControlsModal } from './components/meeting/HostControlsModal';
 import { UserProfileModal } from './components/auth/UserProfileModal';
 import { UserMenu } from './components/auth/UserMenu';
+import { NotificationToast } from './components/ui/NotificationToast';
 import { ThemeProvider } from './context/ThemeContext';
 
 const ACTIVE_MEETING_KEY = 'syncmeet_active_meeting_v1';
@@ -103,7 +104,14 @@ function AppContent() {
   const [isTranscriptionEnabled, setIsTranscriptionEnabled] = useState(true);
   const [meetingDataReady, setMeetingDataReady] = useState(false);
   const [liveCaption, setLiveCaption] = useState(null);
+  const [notification, setNotification] = useState(null);
+  const notificationIdRef = useRef(0);
   const captionTimeoutRef = useRef(null);
+  const showNotification = useCallback((message) => {
+    notificationIdRef.current += 1;
+    setNotification({ id: notificationIdRef.current, message });
+  }, []);
+  const dismissNotification = useCallback(() => setNotification(null), []);
 
   // 4. RBAC & Host Moderation State
   const [hostControlsOpen, setHostControlsOpen] = useState(false);
@@ -334,9 +342,9 @@ function AppContent() {
       captionTimeoutRef.current = null;
     } catch (err) {
       console.error('Could not clear transcript history:', err);
-      window.alert('Transcript history could not be cleared. Please try again.');
+      showNotification('Transcript history could not be cleared. Please try again.');
     }
-  }, [clearTranscripts, session?.roomId, session?.parentRoomId]);
+  }, [clearTranscripts, session?.roomId, session?.parentRoomId, showNotification]);
 
   // Handle In-Room Chat Message Sending & Socket Broadcast
   const handleSendChatMessage = useCallback((text) => {
@@ -361,7 +369,7 @@ function AppContent() {
       if (!saved) throw new Error('Local notes storage is unavailable.');
     } catch (error) {
       console.error('Could not save notes locally:', error);
-      window.alert('Your action item changes could not be saved on this device.');
+      showNotification('Your action item changes could not be saved on this device.');
       return;
     }
     try {
@@ -369,7 +377,7 @@ function AppContent() {
     } catch (error) {
       console.warn('Cloud action-item sync failed:', error.message);
     }
-  }, [session?.roomId, session?.parentRoomId]);
+  }, [session?.roomId, session?.parentRoomId, showNotification]);
 
   const handleAgendaChange = useCallback((agenda) => {
     const meetingRoomId = session?.parentRoomId || session?.roomId;
@@ -500,7 +508,7 @@ function AppContent() {
       if (approved) {
         executeJoinRoom(pendingJoinSession, pendingJoinSession.joiningUser);
       } else {
-        alert(message || 'Host denied your request to join.');
+        showNotification(message || 'Host denied your request to join.');
         setIsWaitingInLobby(false);
         setPendingJoinSession(null);
       }
@@ -508,7 +516,7 @@ function AppContent() {
 
     socketService.on('knock-response', handleKnockResponse);
     return () => socketService.off('knock-response', handleKnockResponse);
-  }, [isWaitingInLobby, pendingJoinSession, executeJoinRoom]);
+  }, [isWaitingInLobby, pendingJoinSession, executeJoinRoom, showNotification]);
 
   // Setup Socket.io Event Subscriptions when session is active
   useEffect(() => {
@@ -561,15 +569,15 @@ function AppContent() {
     };
 
     const handleMediaStatePersistenceError = ({ message }) => {
-      alert(message || 'Your meeting media state could not be saved.');
+      showNotification(message || 'Your meeting media state could not be saved.');
     };
 
     const handleRoomControlError = ({ message }) => {
-      alert(message || 'The meeting control could not be completed.');
+      showNotification(message || 'The meeting control could not be completed.');
     };
 
     const handleMeetingEnded = () => {
-      alert('The meeting was ended by the host.');
+      showNotification('The meeting was ended by the host.');
       void finishMeeting();
     };
 
@@ -605,7 +613,7 @@ function AppContent() {
 
     const handleJoinError = (payload) => {
       const message = payload?.message || (typeof payload === 'string' ? payload : 'Could not join this room.');
-      alert(message);
+      showNotification(message);
       void finishMeeting();
     };
 
@@ -647,7 +655,7 @@ function AppContent() {
       socketService.off('breakout-assignment', handleBreakoutAssignment);
       socketService.off('meeting-agenda-updated', handleAgendaUpdate);
     };
-  }, [session?.roomId, session?.isHost, session?.role, session?.parentRoomId, internalAddTranscript, showLiveCaption, finishMeeting]);
+  }, [session?.roomId, session?.isHost, session?.role, session?.parentRoomId, internalAddTranscript, showLiveCaption, finishMeeting, showNotification]);
 
   useEffect(() => {
     if (!session?.roomId) return;
@@ -792,16 +800,19 @@ function AppContent() {
   // 1. Render Dedicated Login Page
   if (viewMode === 'login' && !session) {
     return (
-      <LoginPage
-        onAuthSuccess={(user) => {
-          setCurrentUser(user);
-          setViewMode('lobby');
-        }}
-        onContinueAsGuest={() => {
-          setCurrentUser(cryptoAuthService.createGuestSession());
-          setViewMode('lobby');
-        }}
-      />
+      <>
+        <LoginPage
+          onAuthSuccess={(user) => {
+            setCurrentUser(user);
+            setViewMode('lobby');
+          }}
+          onContinueAsGuest={() => {
+            setCurrentUser(cryptoAuthService.createGuestSession());
+            setViewMode('lobby');
+          }}
+        />
+        <NotificationToast notification={notification} onDismiss={dismissNotification} />
+      </>
     );
   }
 
@@ -820,6 +831,7 @@ function AppContent() {
         isOpen={historyModalOpen}
         onClose={() => setHistoryModalOpen(false)}
         isAccount={Boolean(currentUser && !currentUser.isGuest)}
+        onNotify={showNotification}
       />
 
       {/* Host Moderation & RBAC Control Modal */}
@@ -913,6 +925,7 @@ function AppContent() {
           }
         />
       )}
+      <NotificationToast notification={notification} onDismiss={dismissNotification} />
     </>
   );
 }
