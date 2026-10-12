@@ -10,6 +10,8 @@ import { inMemoryAuthSessions, verifiedAccounts } from '../store/memoryMeetingSt
 
 const router = express.Router();
 const REFRESH_COOKIE = 'syncmeet_refresh';
+const GOOGLE_ACCOUNT_NOT_REGISTERED_MESSAGE =
+  'This Google account is not linked to a SyncMeet account. Choose Create account to get started.';
 const refreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 const refreshDuration = refreshExpiresIn.match(/^(\d+)([dh])$/);
 if (!refreshDuration) {
@@ -293,11 +295,11 @@ function getCookie(req, name) {
   return item ? item.slice(encodedName.length) : '';
 }
 
-function setOAuthStateCookie(res, state) {
+function setOAuthStateCookie(res, state, mode) {
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
   res.setHeader(
     'Set-Cookie',
-    `syncmeet_google_oauth_state=${encodeURIComponent(state)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=300${secure}`
+    `syncmeet_google_oauth_state=${encodeURIComponent(`${state}.${mode}`)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=300${secure}`
   );
 }
 
@@ -321,6 +323,9 @@ function getGoogleOAuthFailureMessage(error) {
   if (message === 'The email address is linked to a different Google account') {
     return message;
   }
+  if (message === GOOGLE_ACCOUNT_NOT_REGISTERED_MESSAGE) {
+    return message;
+  }
   if (message === 'Google token exchange failed with status 400') {
     return 'Google rejected the authorization response. Check that the authorized redirect URI exactly matches GOOGLE_CALLBACK_URL.';
   }
@@ -331,13 +336,16 @@ function getGoogleOAuthFailureMessage(error) {
 }
 
 // Helper to find or create social user
-async function findOrCreateSocialUser(email, name, avatar, provider, providerId) {
+async function findOrCreateSocialUser(email, name, avatar, provider, providerId, allowCreate = true) {
   const normalizedEmail = email.toLowerCase().trim();
 
   if (isDbConnected()) {
     let user = provider === 'google' && providerId
       ? await User.findOne({ googleId: providerId })
       : null;
+    if (!user && !allowCreate) {
+      throw new Error(GOOGLE_ACCOUNT_NOT_REGISTERED_MESSAGE);
+    }
     if (!user) user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       user = await User.create({
@@ -366,7 +374,13 @@ async function findOrCreateSocialUser(email, name, avatar, provider, providerId)
   }
 
   // In-memory verified accounts
-  let user = verifiedAccounts.get(normalizedEmail);
+  let user = provider === 'google' && providerId
+    ? [...verifiedAccounts.values()].find((account) => account.googleId === providerId)
+    : null;
+  if (!user && !allowCreate) {
+    throw new Error(GOOGLE_ACCOUNT_NOT_REGISTERED_MESSAGE);
+  }
+  if (!user) user = verifiedAccounts.get(normalizedEmail);
   if (!user) {
     user = {
       _id: `usr_${provider}_${Date.now()}`,
@@ -379,6 +393,11 @@ async function findOrCreateSocialUser(email, name, avatar, provider, providerId)
       ...(provider === 'google' && providerId ? { googleId: providerId } : {}),
     };
     verifiedAccounts.set(normalizedEmail, user);
+  } else if (provider === 'google' && providerId) {
+    if (user.googleId && user.googleId !== providerId) {
+      throw new Error('The email address is linked to a different Google account');
+    }
+    user.googleId = providerId;
   }
 
   const session = await createAuthSession(user);
@@ -571,7 +590,8 @@ router.get('/google', (req, res) => {
     return res.status(503).send('Google sign-in is not configured correctly on the server.');
   }
   const state = randomBytes(32).toString('base64url');
-  setOAuthStateCookie(res, state);
+  const mode = req.query.mode === 'signup' ? 'signup' : 'signin';
+  setOAuthStateCookie(res, state, mode);
   const authorizeUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   authorizeUrl.search = new URLSearchParams({
     client_id: config.clientId,
@@ -592,8 +612,14 @@ router.get('/google/callback', async (req, res) => {
     return res.status(503).send('Google sign-in is not configured correctly on the server.');
   }
   clearOAuthStateCookie(res);
-  const stateCookie = getCookie(req, 'syncmeet_google_oauth_state');
-  if (!statesMatch(stateCookie, req.query.state)) {
+  let expectedState = '';
+  let mode = '';
+  try {
+    [expectedState, mode] = decodeURIComponent(getCookie(req, 'syncmeet_google_oauth_state')).split('.');
+  } catch {
+    // Invalid cookie encoding is treated as a failed OAuth state check.
+  }
+  if (!statesMatch(expectedState, req.query.state) || !['signin', 'signup'].includes(mode)) {
     return oauthPopupResponse(res, config.frontendOrigin, {
       type: 'syncmeet-google-auth',
       error: 'Google sign-in could not be verified. Please try again.',
@@ -660,7 +686,8 @@ router.get('/google/callback', async (req, res) => {
       typeof profile.name === 'string' && profile.name.trim() ? profile.name.trim() : profile.email.split('@')[0],
       typeof profile.picture === 'string' ? profile.picture : '',
       'google',
-      profile.sub
+      profile.sub,
+      mode === 'signup'
     );
     setRefreshCookie(res, result.refreshToken);
     return oauthPopupResponse(res, config.frontendOrigin, {

@@ -4,6 +4,14 @@ import * as Sentry from '@sentry/react';
 import App from './App.jsx';
 import './index.css';
 
+if (import.meta.env.MODE === 'production' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch((error) => {
+      console.warn('Offline app support could not be enabled:', error.message);
+    });
+  });
+}
+
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 if (sentryDsn && typeof sentryDsn === 'string' && sentryDsn.trim()) {
   Sentry.init({

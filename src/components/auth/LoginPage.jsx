@@ -41,7 +41,7 @@ export function LoginPage({ onAuthSuccess, onContinueAsGuest, onCancel }) {
     setError('');
     setGoogleLoading(true);
     try {
-      const user = await cryptoAuthService.signInWithGoogle();
+      const user = await cryptoAuthService.signInWithGoogle(mode);
       onAuthSuccess(user);
     } catch (err) {
       setError(err.message || 'Google sign-in could not be completed.');

@@ -3,6 +3,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { test } from 'node:test';
 import authRoutes from '../server/routes/authRoutes.js';
+import { verifiedAccounts } from '../server/store/memoryMeetingStore.js';
 
 function createAuthApp() {
   const app = express();
@@ -227,6 +228,103 @@ test('Google OAuth kickoff binds state and applies production cookie protections
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test('Google sign-in rejects accounts that have not previously signed in with Google', async () => {
+  const keys = [
+    'NODE_ENV',
+    'GOOGLE_CLIENT_ID',
+    'GOOGLE_CLIENT_SECRET',
+    'GOOGLE_CALLBACK_URL',
+    'GOOGLE_FRONTEND_ORIGIN',
+  ];
+  const previousValues = new Map(keys.map((key) => [key, process.env[key]]));
+  const originalFetch = globalThis.fetch;
+  const email = `google-unregistered-${Date.now()}@example.test`;
+  Object.assign(process.env, {
+    NODE_ENV: 'development',
+    GOOGLE_CLIENT_ID: 'qa-client-id',
+    GOOGLE_CLIENT_SECRET: 'qa-client-secret',
+    GOOGLE_CALLBACK_URL: 'https://api.example.test/api/auth/google/callback',
+    GOOGLE_FRONTEND_ORIGIN: 'https://app.example.test',
+  });
+  globalThis.fetch = async (input, options) => {
+    const url = String(input);
+    if (url === 'https://oauth2.googleapis.com/token') {
+      return new Response(JSON.stringify({ access_token: 'test-access-token' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url === 'https://openidconnect.googleapis.com/v1/userinfo') {
+      return new Response(JSON.stringify({
+        sub: 'unregistered-google-account',
+        email,
+        email_verified: true,
+        name: 'Unregistered Google User',
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return originalFetch(input, options);
+  };
+
+  const server = createAuthApp();
+  await new Promise((resolve) => server.once('listening', resolve));
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const kickoff = await originalFetch(`${baseUrl}/api/auth/google?mode=signin`, {
+      redirect: 'manual',
+    });
+    const state = new URL(kickoff.headers.get('location')).searchParams.get('state');
+    const cookie = kickoff.headers.get('set-cookie').split(';')[0];
+    const callback = await originalFetch(
+      `${baseUrl}/api/auth/google/callback?state=${encodeURIComponent(state)}&code=test-code`,
+      { headers: { Cookie: cookie } }
+    );
+    const html = await callback.text();
+
+    assert.equal(callback.status, 200);
+    assert.match(html, /This Google account is not linked to a SyncMeet account/);
+    assert.equal(verifiedAccounts.has(email), false);
+
+    const signupKickoff = await originalFetch(`${baseUrl}/api/auth/google?mode=signup`, {
+      redirect: 'manual',
+    });
+    const signupState = new URL(signupKickoff.headers.get('location')).searchParams.get('state');
+    const signupCookie = signupKickoff.headers.get('set-cookie').split(';')[0];
+    const signupCallback = await originalFetch(
+      `${baseUrl}/api/auth/google/callback?state=${encodeURIComponent(signupState)}&code=test-code`,
+      { headers: { Cookie: signupCookie } }
+    );
+
+    assert.equal(signupCallback.status, 200);
+    assert.match(await signupCallback.text(), /"token":/);
+    assert.equal(verifiedAccounts.get(email)?.googleId, 'unregistered-google-account');
+
+    const signinKickoff = await originalFetch(`${baseUrl}/api/auth/google?mode=signin`, {
+      redirect: 'manual',
+    });
+    const signinState = new URL(signinKickoff.headers.get('location')).searchParams.get('state');
+    const signinCookie = signinKickoff.headers.get('set-cookie').split(';')[0];
+    const signinCallback = await originalFetch(
+      `${baseUrl}/api/auth/google/callback?state=${encodeURIComponent(signinState)}&code=test-code`,
+      { headers: { Cookie: signinCookie } }
+    );
+    const signinHtml = await signinCallback.text();
+
+    assert.equal(signinCallback.status, 200);
+    assert.match(signinHtml, /"token":/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [key, value] of previousValues) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    verifiedAccounts.delete(email);
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });

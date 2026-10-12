@@ -18,6 +18,7 @@ import { UserProfileModal } from './components/auth/UserProfileModal';
 import { UserMenu } from './components/auth/UserMenu';
 import { NotificationToast } from './components/ui/NotificationToast';
 import { ThemeProvider } from './context/ThemeContext';
+import { StatusPage } from './components/common/StatusPage';
 
 const ACTIVE_MEETING_KEY = 'syncmeet_active_meeting_v1';
 
@@ -1008,7 +1009,58 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <AppShell />
     </ThemeProvider>
+  );
+}
+
+function AppShell() {
+  const [pathname, setPathname] = useState(() => window.location.pathname);
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [appWasLoaded, setAppWasLoaded] = useState(() => navigator.onLine);
+  const appContainerRef = useRef(null);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setAppWasLoaded(true);
+    };
+    const handleOffline = () => setIsOnline(false);
+    const handlePopState = () => setPathname(window.location.pathname);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (appContainerRef.current) appContainerRef.current.inert = !isOnline;
+  }, [isOnline, appWasLoaded]);
+
+  const isKnownPath = pathname === '/' || pathname === '/index.html';
+  const checkConnection = () => {
+    const online = navigator.onLine;
+    setIsOnline(online);
+    if (online) setAppWasLoaded(true);
+  };
+
+  if (!isKnownPath) {
+    return <StatusPage type="not-found" />;
+  }
+
+  return (
+    <>
+      {appWasLoaded && (
+        <div ref={appContainerRef} aria-hidden={!isOnline}>
+          <AppContent />
+        </div>
+      )}
+      {!isOnline && <StatusPage type="offline" onRetry={checkConnection} />}
+    </>
   );
 }

@@ -134,8 +134,9 @@ class CryptoAuthService {
   }
 
   // Google OAuth Sign In
-  async signInWithGoogle() {
+  async signInWithGoogle(mode = 'signin') {
     const authUrl = new URL('/api/auth/google', getApiBaseUrl() || window.location.origin);
+    authUrl.searchParams.set('mode', mode);
     const popup = window.open(
       authUrl.toString(),
       'syncmeet-google-auth',
@@ -147,14 +148,11 @@ class CryptoAuthService {
 
     return new Promise((resolve, reject) => {
       let timeoutTimer;
-      let popupCloseTimer;
-      let popupClosedAt = null;
       let channel = null;
       try { channel = new BroadcastChannel('syncmeet-google-auth'); } catch { /* unsupported */ }
       const cleanup = () => {
         window.removeEventListener('message', handleMessage);
         window.clearTimeout(timeoutTimer);
-        window.clearInterval(popupCloseTimer);
         if (channel) channel.close();
       };
       const handleData = (data) => {
@@ -199,19 +197,13 @@ class CryptoAuthService {
 
       window.addEventListener('message', handleMessage);
       if (channel) channel.onmessage = (event) => handleData(event.data);
-      popupCloseTimer = window.setInterval(() => {
-        if (!popup.closed) {
-          popupClosedAt = null;
-          return;
-        }
-        if (popupClosedAt === null) popupClosedAt = Date.now();
-        if (Date.now() - popupClosedAt >= 1500) {
-          cleanup();
-          reject(new Error('Google sign-in window closed before returning to SyncMeet. Please try again.'));
-        }
-      }, 500);
       timeoutTimer = window.setTimeout(() => {
         cleanup();
+        try {
+          popup.close();
+        } catch {
+          // The browser may already have closed or detached the OAuth window.
+        }
         reject(new Error('Google sign-in timed out. Please try again.'));
       }, 180000);
     });
